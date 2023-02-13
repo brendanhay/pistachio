@@ -1,0 +1,15 @@
+[package]
+name = "pistachio"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+ahash = "0.8"
+arrayvec = { version = "0.7.2", default-features = false }
+lalrpop-util = { version = "0.19", default-features = false }
+serde = "1.0.152"
+tinyvec = { version = "1.6.0", default-features = false }
+
+[build-dependencies]
+lalrpop = { version = "0.19", default-features = false }

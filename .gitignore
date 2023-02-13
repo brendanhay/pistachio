@@ -1,0 +1,31 @@
+# Git
+/.pre-commit-config.yaml
+
+# OSX
+.DS_Store
+
+# Emacs/Vim
+*~
+*#
+.#*
+.*.sw[a-z]
+*.un~
+*.org
+.projectile
+TAGS
+
+# Nix
+result*
+
+# Direnv
+/.direnv
+.env
+
+# Rust
+/build
+/target
+
+# Tmp
+/tmp
+log
+*.log

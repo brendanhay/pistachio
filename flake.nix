@@ -54,7 +54,7 @@
         };
 
         rust-workspace = rust-platform.buildRustPackage {
-          pname = "arx";
+          pname = "pistachio";
           version = "0.1.0";
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
