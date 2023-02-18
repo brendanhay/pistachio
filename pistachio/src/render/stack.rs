@@ -1,169 +1,177 @@
-#[derive(Debug, Copy, Clone)]
-pub struct Stack<T> {
-    a: Option<T>,
-    b: Option<T>,
-    c: Option<T>,
-    d: Option<T>,
-    e: Option<T>,
-    f: Option<T>,
-    g: Option<T>,
-    h: Option<T>,
+use super::{
+    Context,
+    Escape,
+    Render,
+    Writer,
+};
+
+pub trait Stack: Sized + Copy {
+    type I: Sized + Copy + Render;
+    type J: Sized + Copy + Render;
+    type K: Sized + Copy + Render;
+
+    type Previous: RenderStack;
+
+    fn push<X: ?Sized + Render>(self, frame: &X) -> (Self::I, Self::J, Self::K, &X);
+
+    fn pop(self) -> Self::Previous;
 }
 
-impl<T: Copy> Stack<T> {
+pub type PushStack<S, X> = (<S as Stack>::I, <S as Stack>::J, <S as Stack>::K, X);
+
+impl Stack for () {
+    type I = ();
+    type J = ();
+    type K = ();
+
+    type Previous = ();
+
     #[inline]
-    pub fn new() -> Self {
-        Self {
-            a: None,
-            b: None,
-            c: None,
-            d: None,
-            e: None,
-            f: None,
-            g: None,
-            h: None,
-        }
+    fn push<X: ?Sized>(self, frame: &X) -> ((), (), (), &X) {
+        ((), (), (), frame)
     }
 
     #[inline]
-    pub fn view(&self) -> [Option<T>; 8] {
-        [
-            self.a, self.b, self.c, self.d, self.e, self.f, self.g, self.h,
-        ]
+    fn pop(self) -> Self::Previous {}
+}
+
+impl<A, B, C, D> Stack for (A, B, C, D)
+where
+    A: Copy + Render,
+    B: Copy + Render,
+    C: Copy + Render,
+    D: Copy + Render,
+{
+    type I = B;
+    type J = C;
+    type K = D;
+
+    type Previous = ((), A, B, C);
+
+    #[inline]
+    fn push<X: ?Sized + Render>(self, frame: &X) -> (B, C, D, &X) {
+        (self.1, self.2, self.3, frame)
     }
 
     #[inline]
-    pub fn push(self, frame: T) -> Self {
-        Self {
-            a: Some(frame),
-            b: self.a,
-            c: self.b,
-            d: self.c,
-            e: self.d,
-            f: self.e,
-            g: self.f,
-            h: self.g,
-        }
-    }
-
-    #[inline]
-    pub fn pop(self) -> Self {
-        Self {
-            a: self.b,
-            b: self.c,
-            c: self.d,
-            d: self.e,
-            e: self.f,
-            f: self.g,
-            g: self.h,
-            h: None,
-        }
+    fn pop(self) -> Self::Previous {
+        ((), self.0, self.1, self.2)
     }
 }
 
-// macro_rules! iter {
-//     ( $self:expr, $callback:expr ) => {{
-//         let Stack {
-//             a,
-//             b,
-//             c,
-//             d,
-//             e,
-//             f,
-//             g,
-//             h,
-//         } = $self;
+pub trait RenderStack: Sized + Copy + Stack {
+    #[inline]
+    fn render_field_escape<W: Writer>(
+        &self,
+        _key: &str,
+        _escape: Escape,
+        _writer: &mut W,
+    ) -> Result<(), W::Error> {
+        Ok(())
+    }
 
-//         if $callback(a)?
-//             || $callback(b)?
-//             || $callback(c)?
-//             || $callback(d)?
-//             || $callback(e)?
-//             || $callback(f)?
-//             || $callback(g)?
-//             || $callback(h)?
-//         {
-//             Ok(true)
-//         } else {
-//             Ok(false)
-//         }
-//     }};
-// }
+    #[inline]
+    fn render_field_section<'a, S, W>(
+        &self,
+        _key: &str,
+        _context: Context<'a, S>,
+        _writer: &mut W,
+    ) -> Result<(), W::Error>
+    where
+        S: RenderStack,
+        W: Writer,
+    {
+        Ok(())
+    }
 
-// macro_rules! iter_context {
-//     ( $self:expr, $context:expr, $callback:expr ) => {{
-//          let Stack {
-//             a,
-//             b,
-//             c,
-//             d,
-//             e,
-//             f,
-//             g,
-//             h,
-//         } = $self;
+    #[inline]
+    fn render_field_inverted_section<'a, S, W>(
+        &self,
+        _key: &str,
+        _context: Context<'a, S>,
+        _writer: &mut W,
+    ) -> Result<(), W::Error>
+    where
+        S: RenderStack,
+        W: Writer,
+    {
+        Ok(())
+    }
+}
 
-//         iter_context!($self, $context, $callback, a b c d e f g h)
-//     }};
+impl RenderStack for () {}
 
-//     ( $self:expr, $context:expr, $callback:expr, $( $field:expr )* ) => {{
-//         let context = $context;
+impl<A, B, C, D> RenderStack for (A, B, C, D)
+where
+    A: Copy + Render,
+    B: Copy + Render,
+    C: Copy + Render,
+    D: Copy + Render,
+{
+    #[inline]
+    fn render_field_escape<W: Writer>(
+        &self,
+        key: &str,
+        escape: Escape,
+        writer: &mut W,
+    ) -> Result<(), W::Error> {
+        if !self.3.render_field_escape(key, escape, writer)?
+            && !self.2.render_field_escape(key, escape, writer)?
+            && !self.1.render_field_escape(key, escape, writer)?
+        {
+            self.0.render_field_escape(key, escape, writer)?;
+        }
 
-//         $(
-//             if $callback($field, context)? {
-//                 return Ok(true);
-//             }
+        Ok(())
+    }
 
-//             let context = $context.pop();
-//         )*
+    #[inline]
+    fn render_field_section<'a, S, W>(
+        &self,
+        key: &str,
+        context: Context<'a, S>,
+        writer: &mut W,
+    ) -> Result<(), W::Error>
+    where
+        S: RenderStack,
+        W: Writer,
+    {
+        if !self.3.render_field_section(key, context, writer)? {
+            let context = context.pop();
 
-//         Ok(false)
-//     }};
-// }
+            if !self.2.render_field_section(key, context, writer)? {
+                let context = context.pop();
 
-// impl RenderKey for Stack<&Data> {
-//     fn render_key<W: Writer>(
-//         &self,
-//         key: &str,
-//         escape: Escape,
-//         writer: &mut W,
-//     ) -> Result<bool, W::Error> {
-//         // Try to render this key starting at the top of the stack and
-//         // short circuit with success when any frame succeeds.
-//         iter!(self, |data| RenderKey::render_key(
-//             data, key, escape, writer
-//         ))
-//     }
+                if !self.1.render_field_section(key, context, writer)? {
+                    let context = context.pop();
 
-//     fn render_section_key<W: Writer>(
-//         &self,
-//         key: &str,
-//         context: Context,
-//         writer: &mut W,
-//     ) -> Result<bool, W::Error> {
-//         // Try to render this key starting at the top of the stack, popping
-//         // off each frame to pass to nested sections, short circuiting with
-//         // success when any frame succeeds.
-//         iter_context!(self, context, |data, context| {
-//             RenderKey::render_section_key(data, key, context, writer)
-//         })
-//     }
+                    self.0.render_field_section(key, context, writer)?;
+                }
+            }
+        }
 
-//     fn render_inverted_key<W: Writer>(
-//         &self,
-//         key: &str,
-//         context: Context,
-//         writer: &mut W,
-//     ) -> Result<bool, W::Error> {
-//         let result = iter!(self, |data| {
-//             RenderKey::render_inverted_key(data, key, context, writer)
-//         })?;
+        Ok(())
+    }
 
-//         if !result {
-//             context.render(writer);
-//             Ok(true)
-//         } else {
-//             Ok(result)
-//         }
-//     }
-// }
+    #[inline]
+    fn render_field_inverted_section<'a, S, W>(
+        &self,
+        key: &str,
+        context: Context<'a, S>,
+        writer: &mut W,
+    ) -> Result<(), W::Error>
+    where
+        S: RenderStack,
+        W: Writer,
+    {
+        if !self.3.render_field_inverted_section(key, context, writer)?
+            && !self.2.render_field_inverted_section(key, context, writer)?
+            && !self.1.render_field_inverted_section(key, context, writer)?
+            && !self.0.render_field_inverted_section(key, context, writer)?
+        {
+            context.render(writer)?;
+        }
+
+        Ok(())
+    }
+}

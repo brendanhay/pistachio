@@ -6,15 +6,10 @@
 //!
 //! [mustache]: https://jgonggrijp.gitlab.io/wontache/mustache.5.html
 
-use super::{
-    rule,
-    Token,
-};
 use crate::{
-    template::{
-        Key,
-        Node,
-    },
+    lexer::Token,
+    parser::balanced,
+    template::{Node, Key},
     Error,
     Loader,
 };
@@ -34,7 +29,7 @@ extern {
     "{{"      => Token::Enter(<&'a str>),
     "}}"      => Token::Leave(<&'a str>),
     "&"       => Token::Ampersand,
-    "#"       => Token::Pound,
+    "#"       => Token::Hash,
     "^"       => Token::Caret,
     "/"       => Token::Slash,
     ">"       => Token::Greater,
@@ -71,48 +66,48 @@ Node: Vec<Node<'a>> = {
 
 Section: Vec<Node<'a>> = {
     "{{" "#" <key:Key> "}}" <nodes:Nodes> <end:Closing> =>? {
-        rule::balanced!(&key == end, "#", key);
-        Ok(rule::section(key, nodes))
+        balanced!(&key == end, "#", key);
+        Ok(key.section(nodes))
     },
 }
 
 Inverted: Vec<Node<'a>> = {
     "{{" "^" <key:Key> "}}" <nodes:Nodes> <end:Closing> =>? {
-        rule::balanced!(&key == end, "^", key);
-        Ok(rule::inverted(key, nodes))
+        balanced!(&key == end, "^", key);
+        Ok(key.inverted(nodes))
     },
 }
 
 Block: Vec<Node<'a>> = {
     "{{" "$" <name:Ident> "}}" <nodes:Nodes> <end:Closing> =>? {
-        rule::balanced!(name == end, "$", name);
-        Ok(rule::block(name, nodes))
+        balanced!(name == end, "$", name);
+        Ok(Node::block(name, nodes))
     },
 }
 
 Parent: Vec<Node<'a>> = {
     "{{" "<" "*" <key:Key> "}}" <nodes:Nodes> <end:Closing> =>? {
-        rule::balanced!(&key == end, "<", key);
-        Ok(rule::parent(key, nodes))
+        balanced!(&key == end, "<", key);
+        Ok(key.parent(nodes))
     },
 
     "{{" "<" <path:String> "}}" <nodes:Nodes> <end:Closing> =>? {
-        rule::balanced!(path == end, "<", path);
+        balanced!(path == end, "<", path);
         let parent = loader.get_template(path)?;
         *size_hint += parent.size_hint;
-        Ok(rule::inherit(parent.nodes.clone(), nodes))
+        Ok(parent.inherit(nodes))
     },
 }
 
 Partial: Vec<Node<'a>> = {
     "{{" ">" "*" <key:Key> "}}" => {
-        rule::partial(key)
+        key.partial()
     },
 
     "{{" ">" <path:String> "}}" =>? {
         let partial = loader.get_template(path)?;
         *size_hint += partial.size_hint();
-        Ok(partial.nodes.clone())
+        Ok(partial.include())
     },
 }
 
@@ -121,8 +116,8 @@ Closing: &'a str = {
 }
 
 Variable: Vec<Node<'a>> = {
-    "{{" "&" <key:Key> "}}" => rule::unescaped(key),
-    "{{"     <key:Key> "}}" => rule::escaped(key),
+    "{{" "&" <key:Key> "}}" => key.unescaped(),
+    "{{"     <key:Key> "}}" => key.escaped(),
 }
 
 Comment: Option<Node<'a>> = {
@@ -132,7 +127,7 @@ Comment: Option<Node<'a>> = {
 Content: Node<'a> = {
     <"CONTENT"> => {
         *size_hint += <>.len();
-        rule::content(<>)
+        Node::content(<>)
     },
 }
 

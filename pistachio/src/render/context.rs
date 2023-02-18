@@ -4,44 +4,49 @@ use std::{
 };
 
 use super::{
-    writer::{
-        Escape,
-        Writer,
+    stack::{
+        PushStack,
+        RenderStack,
     },
-    Stack,
+    writer::Writer,
+    Escape,
+    Render,
 };
-use crate::{
-    render::RenderKey,
-    template::{
-        Node,
-        Tag,
-    },
-    vars::Vars,
+use crate::template::{
+    Node,
+    Tag,
 };
 
+/// The current mustache context containing the execution stack
+/// and the applicable sub-tree of nodes.
 #[derive(Clone, Copy)]
-pub struct Context<'a> {
-    stack: Stack<&'a Vars>,
+pub struct Context<'a, S: RenderStack> {
+    stack: S,
     nodes: &'a [Node<'a>],
 }
 
-impl<'a> Context<'a> {
+impl<'a> Context<'a, ()> {
     pub fn new(nodes: &'a [Node<'a>]) -> Self {
-        Self {
-            stack: Stack::new(),
-            nodes,
-        }
+        Self { stack: (), nodes }
     }
+}
 
-    pub fn push(self, vars: &'a Vars) -> Self {
-        Self {
-            stack: self.stack.push(vars),
+impl<'a, S> Context<'a, S>
+where
+    S: RenderStack,
+{
+    pub fn push<X>(self, frame: &X) -> Context<'a, PushStack<S, &X>>
+    where
+        X: Render + ?Sized,
+    {
+        Context {
+            stack: self.stack.push(frame),
             nodes: self.nodes,
         }
     }
 
-    pub fn pop(self) -> Self {
-        Self {
+    pub fn pop(self) -> Context<'a, S::Previous> {
+        Context {
             stack: self.stack.pop(),
             nodes: self.nodes,
         }
@@ -62,16 +67,18 @@ impl<'a> Context<'a> {
 
             match node.tag {
                 Tag::Escaped => {
-                    self.stack.render_key(node.key, Escape::Html, writer)?;
+                    self.stack
+                        .render_field_escape(node.key, Escape::Html, writer)?;
                 },
 
                 Tag::Unescaped => {
-                    self.stack.render_key(node.key, Escape::None, writer)?;
+                    self.stack
+                        .render_field_escape(node.key, Escape::None, writer)?;
                 },
 
                 Tag::Section => {
                     let children = node.len;
-                    self.stack.render_section_key(
+                    self.stack.render_field_section(
                         node.key,
                         self.children(index..index + children),
                         writer,
@@ -82,7 +89,7 @@ impl<'a> Context<'a> {
 
                 Tag::Inverted => {
                     let children = node.len;
-                    self.stack.render_inverted_key(
+                    self.stack.render_field_inverted_section(
                         node.key,
                         self.children(index..index + children),
                         writer,
@@ -98,7 +105,7 @@ impl<'a> Context<'a> {
                 Tag::Partial => {},
 
                 Tag::Content => {
-                    writer.write_escaped(node.raw, Escape::None)?;
+                    writer.write_escape(node.raw, Escape::None)?;
                 },
             }
         }

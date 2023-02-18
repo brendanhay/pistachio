@@ -1,35 +1,48 @@
-use std::{
-    io,
-    io::Read,
+use pistachio::{
+    json,
+    Pistachio,
+    Render,
 };
 
-use pistachio::{
-    vars,
-    Pistachio,
-};
+#[derive(Debug, Render)]
+struct Vars<'a> {
+    title: &'a str,
+    steve: &'a str,
+}
 
 fn main() {
-    // println!("Enter mustache template:");
-    // let mut source = String::new();
-    // io::stdin().read_to_string(&mut source).unwrap();
-
-    let mut pistachio = Pistachio::reload("examples", "mustache").unwrap();
+    let mut pistachio = Pistachio::new("examples").unwrap();
 
     match pistachio.get("hello-world") {
         Err(err) => println!("{}", err),
         Ok(template) => {
+            println!("----------");
             println!("{:#?}", template);
-
-            let vars = vars!({
-                "title": "This is a title",
-                "steve": "My man"
+            println!("----------");
+            println!("{}", template.source());
+            println!("----------");
+            let vars = json!({
+                "title": "this is a title",
+                "steve": "my man",
+                "body": { "content": "wizzle" },
+                "list": [
+                    {"item": {"name": "foo", "age": 23 }},
+                    {"item": {"name": "bar", "age": 70 }},
+                    {"item": {"name": "baz", "age": 39 }},
+                ],
             });
-
-            println!("{:#?}", &vars);
-
-            let s = template.render(&vars);
-
-            println!("{}", s);
+            let html = template.render(&vars);
+            println!("{:#?}", vars);
+            println!("{}", html);
+            println!("----------");
+            let vars = Vars {
+                title: "this is a title",
+                steve: "my man",
+            };
+            let html = template.render(&vars);
+            println!("{:#?}", vars);
+            println!("{}", html);
+            println!("----------");
         },
     }
 }

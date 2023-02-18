@@ -5,11 +5,8 @@ use std::{
 };
 
 use crate::{
-    parser::{
-        ParseError,
-        Token,
-    },
-    vars::VarsError,
+    lexer::Token,
+    parser::ParseError,
 };
 
 /// Error type used that can be emitted during template parsing.
@@ -21,7 +18,6 @@ pub enum Error {
     Parser(Box<str>),
     ParsingFailed(ParseError<Box<str>, Box<Error>>),
     InvalidPartial(Box<str>),
-    InvalidData(VarsError),
     LoadingDisabled,
     NotFound(Box<str>),
 }
@@ -43,12 +39,6 @@ impl From<ParseError<Token<'_>>> for Error {
     }
 }
 
-impl From<VarsError> for Error {
-    fn from(err: VarsError) -> Self {
-        Error::InvalidData(err)
-    }
-}
-
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Error::*;
@@ -60,7 +50,6 @@ impl fmt::Display for Error {
             ParsingFailed(err) => err.fmt(f),
             LoadingDisabled => write!(f, "Partials are not allowed in the current context"),
             InvalidPartial(path) => path.fmt(f),
-            InvalidData(err) => err.fmt(f),
             NotFound(path) => path.fmt(f),
         }
     }

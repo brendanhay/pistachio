@@ -2,25 +2,21 @@ use std::{
     borrow::Cow,
     fmt,
     io,
+    iter,
 };
 
-use serde::Serialize;
-
 use crate::{
-    parser::{
-        Lexer,
-        Parser,
-    },
+    lexer::Lexer,
+    map,
+    parser::Parser,
     render::{
         Context,
         EscapedWriter,
         Render,
     },
-    vars,
     Error,
     Loader,
     LoadingDisabled,
-    Vars,
 };
 
 /// Represents a parsed and normalised template.
@@ -73,9 +69,9 @@ impl<'a> Template<'a> {
         })
     }
 
-    pub fn render(&self, vars: &Vars) -> String {
+    pub fn render<S: Render>(&self, vars: &S) -> String {
         // let data = encoder::to_data(data)?;
-        let mut capacity = Render::size_hint(vars, self);
+        let mut capacity = vars.size_hint(self);
 
         // Add 25% for escaping and various expansions.
         capacity += capacity / 4;
@@ -86,21 +82,55 @@ impl<'a> Template<'a> {
         buffer
     }
 
-    pub fn render_to_string(&self, vars: &Vars, buffer: &mut String) {
+    pub fn render_to_string<S: Render>(&self, vars: &S, buffer: &mut String) {
         // Writing to a String is Infallible
         let _ = Context::new(&self.nodes).push(vars).render(buffer);
     }
 
     pub fn render_to_writer<S, W>(&self, vars: &S, writer: &mut W) -> Result<(), Error>
     where
-        S: Serialize,
+        S: Render,
         W: io::Write,
     {
-        let vars = Vars::encode(vars)?;
         let mut writer = EscapedWriter::new(writer);
-        let () = Context::new(&self.nodes).push(&vars).render(&mut writer)?;
+        let () = Context::new(&self.nodes).push(vars).render(&mut writer)?;
 
         Ok(())
+    }
+
+    pub(crate) fn include(&self) -> Vec<Node<'a>> {
+        self.nodes.clone()
+    }
+
+    pub(crate) fn inherit(&self, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
+        let mut buffer = Vec::with_capacity(self.nodes.len());
+        let mut blocks: map::Map<_, _> = nodes
+            .iter()
+            .enumerate()
+            .filter_map(|(i, node)| match node.tag {
+                Tag::Block => Some((node.key, (i, node.len))),
+                _ => None,
+            })
+            .collect();
+
+        for node in &self.nodes {
+            match node.tag {
+                // For each block in the parent replace with any matching block override
+                // found in `nodes`. Any blocks that aren't overriden are preserved.
+                Tag::Block => {
+                    if let Some((index, next)) = blocks.remove(node.key) {
+                        buffer.extend_from_slice(&nodes[index..next]);
+                    } else {
+                        buffer.push(node.clone());
+                    }
+                },
+
+                // Any non-block tags are preserved.
+                _ => buffer.push(node.clone()),
+            }
+        }
+
+        buffer
     }
 }
 
@@ -139,8 +169,31 @@ pub struct Node<'a> {
     pub len: usize,
 }
 
+impl<'a> Node<'a> {
+    pub fn content(text: &'a str) -> Self {
+        Node {
+            tag: Tag::Content,
+            key: "",
+            raw: text,
+            len: 0,
+        }
+    }
+
+    pub fn block(name: &'a str, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
+        iter::once(Node {
+            tag: Tag::Block,
+            key: name,
+            raw: "",
+            len: nodes.len(),
+        })
+        .chain(nodes)
+        .collect()
+    }
+}
+
 /// The grammar production `Key` representing a non-empty list of dotted
 /// keys such as `foo.bar.baz`.
+#[derive(Debug)]
 pub struct Key<'a> {
     // Invariant: dots.len() > 0, which the grammar guarantees.
     //
@@ -168,11 +221,55 @@ impl<'a> Key<'a> {
         Self { segments: tail }
     }
 
-    pub fn dots(&self) -> usize {
-        self.segments.len() - 1
+    pub fn section(self, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
+        self.explode(Tag::Section, Tag::Section, Some(nodes))
     }
 
-    pub fn into_segments(self) -> Vec<&'a str> {
+    pub fn inverted(self, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
+        self.explode(Tag::Inverted, Tag::Inverted, Some(nodes))
+    }
+
+    pub fn parent(self, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
+        self.explode(Tag::Section, Tag::Parent, Some(nodes))
+    }
+
+    pub fn partial(self) -> Vec<Node<'a>> {
+        self.explode(Tag::Section, Tag::Partial, None)
+    }
+
+    pub fn escaped(self) -> Vec<Node<'a>> {
+        self.explode(Tag::Section, Tag::Escaped, None)
+    }
+
+    pub fn unescaped(self) -> Vec<Node<'a>> {
+        self.explode(Tag::Section, Tag::Unescaped, None)
+    }
+
+    fn explode(
+        self,
+        parent_tag: Tag,
+        target_tag: Tag,
+        nodes: Option<Vec<Node<'a>>>,
+    ) -> Vec<Node<'a>> {
+        let dots = self.segments.len() - 1;
+        let children = nodes.as_ref().map(|n| n.len()).unwrap_or(0);
+
         self.segments
+            .into_iter()
+            .enumerate()
+            .map(|(child, name)| {
+                let last = child == dots;
+                let tag = if last { target_tag } else { parent_tag };
+                let next = if last { children } else { dots - child };
+
+                Node {
+                    tag,
+                    key: name,
+                    raw: "",
+                    len: next,
+                }
+            })
+            .chain(nodes.into_iter().flatten())
+            .collect()
     }
 }

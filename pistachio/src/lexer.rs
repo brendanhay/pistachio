@@ -26,12 +26,60 @@
 
 use std::str::pattern::Pattern;
 
-use super::Token::{
-    self,
-    *,
-};
 use crate::Error;
 
+#[derive(Debug, Clone, Copy)]
+pub enum Token<'a> {
+    Ident(&'a str),   // An identifier - the single component of a key, no dots!
+    String(&'a str),  // A string inside a tag.
+    Content(&'a str), // Raw textual content outside any tags.
+    Enter(&'a str),   // `{{` tag start
+    Leave(&'a str),   // `}}` tag end
+    Slash,            // `/`
+    Hash,             // #
+    Caret,            // ^
+    Greater,          // >
+    Less,             // <
+    Dollar,           // $
+    Bang,             // !
+    Ampersand,        // &
+    Asterisk,         // *
+    Period,           // .
+    Equals,           // =
+}
+
+use std::fmt;
+
+use Token::*;
+
+impl Token<'_> {
+    pub fn skip_whitespace(&self) -> bool {
+        !matches!(self, Leave(..) | Period)
+    }
+}
+
+impl fmt::Display for Token<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Enter(s) => write!(f, "{}", s),
+            Leave(s) => write!(f, "{}", s),
+            Ident(s) => write!(f, "{}", s),
+            String(s) => write!(f, "{}", s),
+            Content(s) => write!(f, "{}", s),
+            Slash => write!(f, "/"),
+            Hash => write!(f, "#"),
+            Caret => write!(f, "^"),
+            Greater => write!(f, ">"),
+            Less => write!(f, "<"),
+            Dollar => write!(f, "$"),
+            Bang => write!(f, "!"),
+            Ampersand => write!(f, "&"),
+            Asterisk => write!(f, "*"),
+            Period => write!(f, "."),
+            Equals => write!(f, "="),
+        }
+    }
+}
 enum Mode {
     /// Outside mucking around in the raw text.
     Content,
@@ -107,7 +155,7 @@ impl<'a> Lexer<'a> {
                 scan! {
                     self.token("}}", Leave)
                     self.token("/",  |_| Slash)
-                    self.token("#",  |_| Pound)
+                    self.token("#",  |_| Hash)
                     self.token("^",  |_| Caret)
                     self.token(">",  |_| Greater)
                     self.token("<",  |_| Less)

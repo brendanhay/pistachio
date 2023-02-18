@@ -1,5 +1,6 @@
 [workspace]
-members = ["pistachio"]
+members = ["pistachio", "pistachio-macros"]
+default-members = ["pistachio"]
 
 [profile.bench]
 lto = "fat"

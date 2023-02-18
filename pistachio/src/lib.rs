@@ -1,4 +1,5 @@
 #![feature(pattern)]
+#![warn(clippy::disallowed_types)]
 
 use std::{
     borrow::Cow,
@@ -15,32 +16,36 @@ use std::{
     },
 };
 
-use map::Map;
+#[cfg(feature = "macros")]
+pub use pistachio_macros::Render;
+#[cfg(feature = "serde_json")]
+pub use serde_json::{
+    json,
+    Value,
+};
 
 pub use self::{
     error::Error,
     parser::ParseError,
+    render::Render,
     template::Template,
-    vars::{
-        Vars,
-        VarsError,
-    },
 };
 
-#[macro_use]
-mod macros;
-
 mod error;
+mod lexer;
 mod map;
 mod parser;
-mod render;
 mod template;
-mod vars;
+
+// Exposed for pistachio-macros to use.
+#[doc(hidden)]
+pub mod render;
 
 /// The caching strategy determining how templates are loaded.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum Cache {
     /// Cache non-dynamic templates by name, in memory.
+    #[default]
     Name,
 
     // ModifiedTime,
@@ -49,39 +54,31 @@ pub enum Cache {
     None,
 }
 
+/// XXX: raise on variable miss - raise when partial/parent don't exist, etc.
+
 /// Everybody loves `Pistachio`.
 pub struct Pistachio {
     root: PathBuf,
     extension: OsString,
-    templates: Map<Cow<'static, str>, Template<'static>>,
+    templates: map::Map<Cow<'static, str>, Template<'static>>,
     cache: Cache,
+    // raise: bool,
 }
 
 impl Pistachio {
-    pub fn cached<D, E>(dir: D, extension: E) -> Result<Self, Error>
+    pub fn new<Dir>(dir: Dir) -> Result<Self, Error>
     where
-        D: AsRef<Path>,
-        E: AsRef<OsStr>,
+        Dir: AsRef<Path>,
     {
-        Self::new_with(Cache::Name, dir, extension)
+        Self::configure(Cache::default(), dir, "mustache")
     }
 
-    pub fn reload<D, E>(dir: D, extension: E) -> Result<Self, Error>
-    where
-        D: AsRef<Path>,
-        E: AsRef<OsStr>,
-    {
-        Self::new_with(Cache::None, dir, extension)
-    }
-}
-
-impl Pistachio {
     /// Create a new `Pistachio` using the specified caching strategy, with the specified
     /// root directory and file extension as the search mechanism for loaded templates.
-    pub fn new_with<D, E>(cache: Cache, dir: D, extension: E) -> Result<Self, Error>
+    pub fn configure<Dir, Ext>(cache: Cache, dir: Dir, extension: Ext) -> Result<Self, Error>
     where
-        D: AsRef<Path>,
-        E: AsRef<OsStr>,
+        Dir: AsRef<Path>,
+        Ext: AsRef<OsStr>,
     {
         Ok(Self {
             root: dir.as_ref().canonicalize()?,
@@ -91,19 +88,8 @@ impl Pistachio {
         })
     }
 
-    /// Add a template to this `Pistachio`.
-    pub fn add<N, S>(&mut self, name: N, source: S) -> Result<&Template<'static>, Error>
-    where
-        N: Into<Cow<'static, str>>,
-        S: Into<Cow<'static, str>>,
-    {
-        let name = name.into();
-        let template = Template::with_loader(source.into(), self)?;
-
-        Ok(self.insert_template(name, template))
-    }
-
-    /// Get an existing template from this `Pistachio`.
+    /// Get an existing template from this `Pistachio`, reading it from the filesystem
+    /// and parsing it, if not already present in memory.
     pub fn get(&mut self, name: &str) -> Result<&Template<'static>, Error> {
         match self.cache {
             Cache::Name if self.templates.contains_key(name) => {},
@@ -116,6 +102,22 @@ impl Pistachio {
         }
 
         Ok(&self.templates[name])
+    }
+
+    /// Add a template to this `Pistachio`.
+    pub fn add<Name, Source>(
+        &mut self,
+        name: Name,
+        source: Source,
+    ) -> Result<&Template<'static>, Error>
+    where
+        Name: Into<Cow<'static, str>>,
+        Source: Into<Cow<'static, str>>,
+    {
+        let name = name.into();
+        let template = Template::with_loader(source.into(), self)?;
+
+        Ok(self.insert_template(name, template))
     }
 
     #[inline]

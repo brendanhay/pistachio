@@ -1,15 +1,24 @@
 [package]
 name = "pistachio"
 version = "0.1.0"
+license = "GPL-3.0"
 edition = "2021"
 build = "build.rs"
+workspace = ".."
+readme = "../README.md"
 
 [dependencies]
-ahash = "0.8"
-arrayvec = { version = "0.7.2", default-features = false }
+ahash = { version = "0.8", optional = true }
 lalrpop-util = { version = "0.19", default-features = false }
-serde = "1.0.152"
-tinyvec = { version = "1.6.0", default-features = false }
+pistachio-macros = { version = "0.1", optional = true, path = "../pistachio-macros" }
+serde_json = { version = "1.0.93", optional = true, default-features = false, features = ["std"] }
 
 [build-dependencies]
 lalrpop = { version = "0.19", default-features = false }
+
+[features]
+default = ["ahash", "macros", "serde_json"]
+
+ahash = ["dep:ahash"]
+macros = ["dep:pistachio-macros"]
+serde_json = ["dep:serde_json"]
