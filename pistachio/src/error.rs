@@ -1,70 +1,54 @@
 use std::{
-    error,
     fmt,
     io,
 };
 
-use crate::{
-    lexer::Token,
-    parser::ParseError,
-    render::RenderError,
+use crate::parser::{
+    ParseError,
+    Token,
 };
 
-// XXX: Tidy this up
-
-/// Error type used that can be emitted during template parsing.
 #[derive(Debug)]
 pub enum Error {
-    /// An IO error was encountered - happens when parsing a file
+    /// An IO error occurred while parsing or rendering.
     Io(io::Error),
-    Lexer(Box<str>),
-    Parser(Box<str>),
-    Render(Box<str>),
-    ParsingFailed(ParseError<Box<str>, Box<Error>>),
-    InvalidPartial(Box<str>),
+
+    /// An LR parser error occurred.
+    ParsingFailed(Box<str>),
+
+    /// Loading templates at runtime is disabled.
     LoadingDisabled,
-    NotFound(Box<str>),
+
+    /// An attempt to include a partial or parent failed.
+    InvalidPartial(Box<str>),
+
+    /// Tried to serialize a map key that was not a string.
+    KeyMustBeAString,
+
+    /// Tried to serialize a number bigger than the maximum allowable value for its type.
+    NumberOutOfRange,
 }
 
-impl error::Error for Error {}
-
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
-        Error::Io(err)
-    }
-}
-
-impl From<RenderError<io::Error>> for Error {
-    fn from(err: RenderError<io::Error>) -> Self {
-        match err {
-            RenderError::WriteError(io) => Error::Io(io),
-            RenderError::MissingVariable(v) => Error::Render(v),
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::Io(err) => fmt::Display::fmt(err, f),
+            Error::ParsingFailed(msg) => f.write_str(msg),
+            Error::LoadingDisabled => {
+                f.write_str("loading templates from the filesystem is disabled")
+            },
+            Error::InvalidPartial(msg) => write!(f, "partial path {} is invalid", msg),
+            Error::KeyMustBeAString => f.write_str("key must be a string"),
+            Error::NumberOutOfRange => f.write_str("number out of range"),
         }
     }
 }
 
 impl From<ParseError<Token<'_>>> for Error {
     fn from(err: ParseError<Token<'_>>) -> Self {
-        let err = err.map_token(|token| Box::from(token.to_string()));
-        let err = err.map_error(|error| Box::from(error));
-
-        Error::ParsingFailed(err)
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Error::*;
-
-        match self {
-            Io(err) => err.fmt(f),
-            Lexer(err) => err.fmt(f),
-            Parser(err) => err.fmt(f),
-            Render(err) => err.fmt(f),
-            ParsingFailed(err) => err.fmt(f),
-            LoadingDisabled => write!(f, "Partials are not allowed in the current context"),
-            InvalidPartial(path) => path.fmt(f),
-            NotFound(path) => path.fmt(f),
+        match err {
+            ParseError::User { error } => error,
+            _ => Error::ParsingFailed(Box::from(err.to_string())),
         }
     }
 }

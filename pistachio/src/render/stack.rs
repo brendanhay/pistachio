@@ -1,147 +1,72 @@
 use super::{
     Context,
-    Escape,
-    Render,
-    RenderError,
     Writer,
 };
+use crate::{
+    error::Error,
+    render::Render,
+};
 
-pub trait Stack: Sized + Copy {
-    type I: Sized + Copy + Render;
-    type J: Sized + Copy + Render;
-    type K: Sized + Copy + Render;
-    type L: Sized + Copy + Render;
-    type M: Sized + Copy + Render;
-
-    type Previous: RenderStack;
-
-    fn push<X: ?Sized + Render>(
-        self,
-        frame: &X,
-    ) -> (Self::I, Self::J, Self::K, Self::L, Self::M, &X);
-
-    fn pop(self) -> Self::Previous;
+#[derive(Clone, Copy)]
+pub struct Stack<'a> {
+    a: &'a (dyn Render),
+    b: &'a (dyn Render),
+    c: &'a (dyn Render),
+    d: &'a (dyn Render),
+    e: &'a (dyn Render),
+    f: &'a (dyn Render),
 }
 
-pub type PushStack<S, X> = (
-    <S as Stack>::I,
-    <S as Stack>::J,
-    <S as Stack>::K,
-    <S as Stack>::L,
-    <S as Stack>::M,
-    X,
-);
-
-impl Stack for () {
-    type I = ();
-    type J = ();
-    type K = ();
-    type L = ();
-    type M = ();
-
-    type Previous = ();
-
+impl<'a> Stack<'a> {
     #[inline]
-    fn push<X: ?Sized>(self, frame: &X) -> ((), (), (), (), (), &X) {
-        ((), (), (), (), (), frame)
+    pub fn new() -> Self {
+        Self {
+            a: &(),
+            b: &(),
+            c: &(),
+            d: &(),
+            e: &(),
+            f: &(),
+        }
     }
 
     #[inline]
-    fn pop(self) -> Self::Previous {}
-}
-
-impl<A, B, C, D, E, F> Stack for (A, B, C, D, E, F)
-where
-    A: Copy + Render,
-    B: Copy + Render,
-    C: Copy + Render,
-    D: Copy + Render,
-    E: Copy + Render,
-    F: Copy + Render,
-{
-    type I = B;
-    type J = C;
-    type K = D;
-    type L = E;
-    type M = F;
-
-    type Previous = ((), A, B, C, D, E);
-
-    #[inline]
-    fn push<X: ?Sized + Render>(self, frame: &X) -> (B, C, D, E, F, &X) {
-        (self.1, self.2, self.3, self.4, self.5, frame)
+    pub fn push(self, frame: &'a (dyn Render)) -> Self {
+        Self {
+            a: frame,
+            b: self.a,
+            c: self.b,
+            d: self.c,
+            e: self.d,
+            f: self.e,
+        }
     }
 
     #[inline]
-    fn pop(self) -> Self::Previous {
-        ((), self.0, self.1, self.2, self.3, self.4)
-    }
-}
-
-pub trait RenderStack: Sized + Copy + Stack {
-    #[inline]
-    fn render_field_escape<W: Writer>(
-        &self,
-        _key: &str,
-        _escape: Escape,
-        _writer: &mut W,
-    ) -> Result<bool, RenderError<W::Error>> {
-        Ok(false)
+    pub fn pop(self) -> Self {
+        Self {
+            a: self.b,
+            b: self.c,
+            c: self.d,
+            d: self.e,
+            e: self.f,
+            f: &(),
+        }
     }
 
     #[inline]
-    fn render_field_section<'a, S, W>(
-        &self,
-        _key: &str,
-        _context: Context<'a, S>,
-        _writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
-        Ok(())
-    }
-
-    #[inline]
-    fn render_field_inverted_section<'a, S, W>(
-        &self,
-        _key: &str,
-        _context: Context<'a, S>,
-        _writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
-        Ok(())
-    }
-}
-
-impl RenderStack for () {}
-
-impl<A, B, C, D, E, F> RenderStack for (A, B, C, D, E, F)
-where
-    A: Copy + Render,
-    B: Copy + Render,
-    C: Copy + Render,
-    D: Copy + Render,
-    E: Copy + Render,
-    F: Copy + Render,
-{
-    #[inline]
-    fn render_field_escape<W: Writer>(
+    pub fn render_stack(
         &self,
         key: &str,
-        escape: Escape,
-        writer: &mut W,
-    ) -> Result<bool, RenderError<W::Error>> {
-        if self.5.render_field_escape(key, escape, writer)?
-            || self.4.render_field_escape(key, escape, writer)?
-            || self.3.render_field_escape(key, escape, writer)?
-            || self.2.render_field_escape(key, escape, writer)?
-            || self.1.render_field_escape(key, escape, writer)?
-            || self.0.render_field_escape(key, escape, writer)?
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<bool, Error> {
+        if self.a.render_named(key, context, writer)?
+            || self.b.render_named(key, context, writer)?
+            || self.c.render_named(key, context, writer)?
+            || self.d.render_named(key, context, writer)?
+            || self.e.render_named(key, context, writer)?
+            || self.f.render_named(key, context, writer)?
         {
             Ok(true)
         } else {
@@ -150,55 +75,27 @@ where
     }
 
     #[inline]
-    fn render_field_section<'a, S, W>(
+    pub fn render_stack_section(
         &self,
         key: &str,
-        context: Context<'a, S>,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
-        if !self.5.render_field_section(key, context, writer)? {
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Error> {
+        if !self.a.render_named_section(key, context, writer)? {
             let context = context.pop();
-            if !self.4.render_field_section(key, context, writer)? {
+            if !self.b.render_named_section(key, context, writer)? {
                 let context = context.pop();
-                if !self.3.render_field_section(key, context, writer)? {
+                if !self.c.render_named_section(key, context, writer)? {
                     let context = context.pop();
-                    if !self.2.render_field_section(key, context, writer)? {
+                    if !self.d.render_named_section(key, context, writer)? {
                         let context = context.pop();
-                        if !self.1.render_field_section(key, context, writer)? {
+                        if !self.e.render_named_section(key, context, writer)? {
                             let context = context.pop();
-                            self.0.render_field_section(key, context, writer)?;
+                            self.f.render_named_section(key, context, writer)?;
                         }
                     }
                 }
             }
-        }
-
-        Ok(())
-    }
-
-    #[inline]
-    fn render_field_inverted_section<'a, S, W>(
-        &self,
-        key: &str,
-        context: Context<'a, S>,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
-        if !self.5.render_field_inverted_section(key, context, writer)?
-            && !self.4.render_field_inverted_section(key, context, writer)?
-            && !self.3.render_field_inverted_section(key, context, writer)?
-            && !self.2.render_field_inverted_section(key, context, writer)?
-            && !self.1.render_field_inverted_section(key, context, writer)?
-            && !self.0.render_field_inverted_section(key, context, writer)?
-        {
-            context.render(writer)?;
         }
 
         Ok(())

@@ -1,6 +1,5 @@
 use std::{
     borrow::Cow,
-    convert::Infallible,
     fmt,
     io,
     iter,
@@ -12,9 +11,8 @@ use crate::{
     parser::Parser,
     render::{
         Context,
-        EscapedWriter,
         Render,
-        RenderError,
+        Writer,
     },
     Error,
     Loader,
@@ -24,7 +22,7 @@ use crate::{
 /// Represents a parsed and normalised template.
 #[derive(Debug)]
 pub struct Template<'a> {
-    pub(crate) size_hint: usize,
+    pub(crate) size_hint: usize, // XXX: these are exposed to the grammar
     pub(crate) nodes: Vec<Node<'a>>,
     source: Cow<'a, str>,
     raise: bool,
@@ -74,43 +72,30 @@ impl<'a> Template<'a> {
         })
     }
 
-    pub fn render<S: Render>(&self, vars: &S) -> Result<String, RenderError<Infallible>> {
-        // let data = encoder::to_data(data)?;
+    pub fn render<T>(&self, vars: &T) -> Result<String, Error>
+    where
+        T: Render,
+    {
         let mut capacity = vars.size_hint(self);
 
         // Add 25% for escaping and various expansions.
         capacity += capacity / 4;
 
-        let mut buffer = String::with_capacity(capacity);
-        let _ = self.render_to_string(vars, &mut buffer)?;
-
-        Ok(buffer)
-    }
-
-    pub fn render_to_string<S: Render>(
-        &self,
-        vars: &S,
-        buffer: &mut String,
-    ) -> Result<(), RenderError<Infallible>> {
-        // Writing to a String is Infallible
-        Context::new(self.raise, &self.nodes)
+        Context::new(&self.nodes, self.raise)
             .push(vars)
-            .render(buffer)
+            .render_to_string(capacity)
     }
 
-    pub fn render_to_writer<S, W>(
-        &self,
-        vars: &S,
-        writer: &mut W,
-    ) -> Result<(), RenderError<io::Error>>
+    pub fn render_to_writer<T, W>(&self, vars: &T, writer: &mut W) -> Result<(), Error>
     where
-        S: Render,
+        T: Render,
         W: io::Write,
     {
-        let mut writer = EscapedWriter::new(writer);
-        let () = Context::new(self.raise, &self.nodes)
-            .push(vars)
-            .render(&mut writer)?;
+        let mut writer = Writer::new(writer);
+
+        Context::new(&self.nodes, self.raise)
+            .push(&vars)
+            .render_to_writer(&mut writer)?;
 
         Ok(())
     }
@@ -125,7 +110,7 @@ impl<'a> Template<'a> {
             .iter()
             .enumerate()
             .filter_map(|(i, node)| match node.tag {
-                Tag::Block => Some((node.key, (i, node.len))),
+                Tag::Block => Some((node.key, (i, node.children))),
                 _ => None,
             })
             .collect();
@@ -148,6 +133,45 @@ impl<'a> Template<'a> {
         }
 
         buffer
+    }
+}
+
+/// A node of the template abstract syntax tree.
+/// Named as such to avoid confusion with the mustache `{{$block}}` tag.
+#[derive(Debug, Clone, Copy)]
+pub struct Node<'a> {
+    pub tag: Tag,
+    pub start: usize,
+    pub key: &'a str,
+    pub text: &'a str,
+    pub children: usize,
+}
+
+impl<'a> Node<'a> {
+    fn new(tag: Tag, key: Key<'a>, text: &'a str, children: usize) -> Self {
+        Self {
+            tag,
+            start: key.start,
+            key: key.ident,
+            text,
+            children,
+        }
+    }
+
+    pub fn content(start: usize, text: &'a str) -> Self {
+        Node {
+            tag: Tag::Content,
+            start,
+            key: "",
+            text,
+            children: 0,
+        }
+    }
+
+    pub fn block(key: Key<'a>, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
+        iter::once(Node::new(Tag::Block, key, "", nodes.len()))
+            .chain(nodes)
+            .collect()
     }
 }
 
@@ -178,64 +202,68 @@ pub enum Tag {
     Content,
 }
 
+/// The `Key` grammar production rule representing a single identifier with no dots.
 #[derive(Debug, Clone, Copy)]
-pub struct Node<'a> {
-    pub tag: Tag,
-    pub key: &'a str,
-    pub raw: &'a str,
-    pub len: usize,
-}
-
-impl<'a> Node<'a> {
-    pub fn content(text: &'a str) -> Self {
-        Node {
-            tag: Tag::Content,
-            key: "",
-            raw: text,
-            len: 0,
-        }
-    }
-
-    pub fn block(name: &'a str, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
-        iter::once(Node {
-            tag: Tag::Block,
-            key: name,
-            raw: "",
-            len: nodes.len(),
-        })
-        .chain(nodes)
-        .collect()
-    }
-}
-
-/// The grammar production `Key` representing a non-empty list of dotted
-/// keys such as `foo.bar.baz`.
-#[derive(Debug)]
 pub struct Key<'a> {
-    // Invariant: dots.len() > 0, which the grammar guarantees.
-    //
-    // This is more convenient for equality/iterators than something like:
-    //   head: &'a str,
-    //   tail: Vec<&'a str>,
-    segments: Vec<&'a str>,
+    start: usize,
+    ident: &'a str,
 }
 
-impl fmt::Display for Key<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.segments.join("."))
+impl<'a> Key<'a> {
+    pub fn new(start: usize, ident: &'a str) -> Self {
+        Self { start, ident }
     }
 }
 
 impl PartialEq<str> for Key<'_> {
     fn eq(&self, other: &str) -> bool {
-        self.segments.iter().map(|s| *s).eq(other.split('.'))
+        self.ident == other
     }
 }
 
-impl<'a> Key<'a> {
-    pub fn new(head: &'a str, mut tail: Vec<&'a str>) -> Self {
-        tail.insert(0, head);
-        Self { segments: tail }
+impl fmt::Display for Key<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.ident)
+    }
+}
+
+/// The `Name` grammar production rule representing a non-empty list of dotted
+/// `Key`s such as `foo.bar.baz`.
+#[derive(Debug)]
+pub struct Name<'a> {
+    head: Key<'a>,
+    tail: Vec<Key<'a>>,
+}
+
+impl PartialEq<str> for Name<'_> {
+    fn eq(&self, other: &str) -> bool {
+        if self.head.ident == other {
+            true
+        } else {
+            iter::once(&self.head)
+                .chain(self.tail.iter())
+                .map(|key| (*key).ident)
+                .eq(other.split('.'))
+        }
+    }
+}
+
+// Since `Name` is crate internal, this is only used when displaying errors.
+impl fmt::Display for Name<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.head)?;
+
+        for key in &self.tail {
+            write!(f, ".{}", key)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a> Name<'a> {
+    pub fn new(head: Key<'a>, tail: Vec<Key<'a>>) -> Self {
+        Self { head, tail }
     }
 
     pub fn section(self, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
@@ -268,23 +296,20 @@ impl<'a> Key<'a> {
         target_tag: Tag,
         nodes: Option<Vec<Node<'a>>>,
     ) -> Vec<Node<'a>> {
-        let dots = self.segments.len() - 1;
+        let dots = self.tail.len();
         let children = nodes.as_ref().map(|n| n.len()).unwrap_or(0);
 
-        self.segments
-            .into_iter()
-            .enumerate()
-            .map(|(child, name)| {
-                let last = child == dots;
-                let tag = if last { target_tag } else { parent_tag };
-                let next = if last { children } else { dots - child };
+        println!("{:?} {:?} {:?}", self, parent_tag, target_tag);
 
-                Node {
-                    tag,
-                    key: name,
-                    raw: "",
-                    len: next,
-                }
+        iter::once(self.head)
+            .chain(self.tail.into_iter())
+            .enumerate()
+            .map(|(index, key)| {
+                let last = index == dots;
+                let tag = if last { target_tag } else { parent_tag };
+                let next = if last { children } else { dots - index };
+
+                Node::new(tag, key, "", next)
             })
             .chain(nodes.into_iter().flatten())
             .collect()

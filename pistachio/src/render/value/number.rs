@@ -1,8 +1,8 @@
 use crate::{
+    error::Error,
     render::{
-        Escape,
+        Context,
         Render,
-        RenderError,
         Writer,
     },
     Template,
@@ -13,22 +13,22 @@ macro_rules! impl_numbers {
         $(
             impl Render for $ty {
                 #[inline]
-                fn is_truthy(&self) -> bool {
-                    *self != 0 as $ty
-                }
-
-                #[inline]
                 fn size_hint(&self, _template: &Template) -> usize {
                     5
                 }
 
                 #[inline]
-                fn render_escape<W: Writer>(
+                fn is_truthy(&self) -> bool {
+                    *self != 0 as $ty
+                }
+
+                #[inline]
+                fn render(
                     &self,
-                    _escape: Escape,
-                    writer: &mut W
-                ) -> Result<(), RenderError<W::Error>> {
-                    writer.format_escape(Escape::None, self).map_err(Into::into)
+                    context: Context,
+                    writer: &mut Writer
+                ) -> Result<(), Error> {
+                    writer.format(context.escape, self)
                 }
             }
         )*
@@ -43,22 +43,22 @@ macro_rules! impl_float {
         $(
             impl Render for $ty  {
                 #[inline]
-                fn is_truthy(&self) -> bool {
-                    self.abs() > $epsilon
-                }
-
-                #[inline]
                 fn size_hint(&self, _template: &Template) -> usize {
                     5
                 }
 
                 #[inline]
-                fn render_escape<W: Writer>(
+                fn is_truthy(&self) -> bool {
+                    self.abs() > $epsilon
+                }
+
+                #[inline]
+                fn render(
                     &self,
-                    _escape: Escape,
-                    writer: &mut W,
-                ) -> Result<(), RenderError<W::Error>> {
-                    writer.format_escape(Escape::None, self).map_err(Into::into)
+                    context: Context,
+                    writer: &mut Writer
+                ) -> Result<(), Error> {
+                    writer.format(context.escape, self)
                 }
             }
         )*

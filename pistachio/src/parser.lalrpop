@@ -9,7 +9,7 @@
 use crate::{
     lexer::Token,
     parser::balanced,
-    template::{Node, Key},
+    template::{Key, Node, Name},
     Error,
     Loader,
 };
@@ -65,47 +65,52 @@ Node: Vec<Node<'a>> = {
 }
 
 Section: Vec<Node<'a>> = {
-    "{{" "#" <key:Key> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!(&key == end, "#", key);
-        Ok(key.section(nodes))
+    "{{" "#" <name:Name> "}}" <nodes:Nodes> <end:Closing> =>? {
+        balanced!("#", &name, end, {
+            Ok(name.section(nodes))
+        })
     },
 }
 
 Inverted: Vec<Node<'a>> = {
-    "{{" "^" <key:Key> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!(&key == end, "^", key);
-        Ok(key.inverted(nodes))
+    "{{" "^" <name:Name> "}}" <nodes:Nodes> <end:Closing> =>? {
+        balanced!("^", &name, end, {
+            Ok(name.inverted(nodes))
+        })
     },
 }
 
 Block: Vec<Node<'a>> = {
-    "{{" "$" <name:Ident> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!(name == end, "$", name);
-        Ok(Node::block(name, nodes))
+    "{{" "$" <key:Key> "}}" <nodes:Nodes> <end:Closing> =>? {
+        balanced!("$", &key, end, {
+            Ok(Node::block(key, nodes))
+        })
     },
 }
 
 Parent: Vec<Node<'a>> = {
-    "{{" "<" "*" <key:Key> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!(&key == end, "<", key);
-        Ok(key.parent(nodes))
+    "{{" "<" "*" <name:Name> "}}" <nodes:Nodes> <end:Closing> =>? {
+        balanced!("<", &name, end, {
+            Ok(name.parent(nodes))
+        })
     },
 
-    "{{" "<" <path:String> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!(path == end, "<", path);
-        let parent = loader.get_template(path)?;
-        *size_hint += parent.size_hint;
-        Ok(parent.inherit(nodes))
+    "{{" "<" <name:String> "}}" <nodes:Nodes> <end:Closing> =>? {
+        balanced!("<", name, end, {
+            let parent = loader.get_template(name)?;
+            *size_hint += parent.size_hint;
+            Ok(parent.inherit(nodes))
+        })
     },
 }
 
 Partial: Vec<Node<'a>> = {
-    "{{" ">" "*" <key:Key> "}}" => {
-        key.partial()
+    "{{" ">" "*" <name:Name> "}}" => {
+        name.partial()
     },
 
-    "{{" ">" <path:String> "}}" =>? {
-        let partial = loader.get_template(path)?;
+    "{{" ">" <name:String> "}}" =>? {
+        let partial = loader.get_template(name)?;
         *size_hint += partial.size_hint();
         Ok(partial.include())
     },
@@ -116,8 +121,8 @@ Closing: &'a str = {
 }
 
 Variable: Vec<Node<'a>> = {
-    "{{" "&" <key:Key> "}}" => key.unescaped(),
-    "{{"     <key:Key> "}}" => key.escaped(),
+    "{{" "&" <name:Name> "}}" => name.unescaped(),
+    "{{"     <name:Name> "}}" => name.escaped(),
 }
 
 Comment: Option<Node<'a>> = {
@@ -125,26 +130,26 @@ Comment: Option<Node<'a>> = {
 }
 
 Content: Node<'a> = {
-    <"CONTENT"> => {
-        *size_hint += <>.len();
-        Node::content(<>)
+    <start:@L> <text:"CONTENT"> => {
+        *size_hint += text.len();
+        Node::content(start, text)
     },
 }
 
-Key: Key<'a> = {
-    <head:Ident> <tail:("." <Ident>)*> => {
-        Key::new(head, tail)
+Name: Name<'a> = {
+    <head:Key> <tail:("." <Key>)*> => {
+        Name::new(head, tail)
     },
 
-    "." => {
-        Key::new(".", Vec::with_capacity(1))
+    <start:@L> "." => {
+        Name::new(Key::new(start, "<reserved:dot>"), Vec::new())
     }
+}
+
+Key: Key<'a> = {
+    <start:@L> <ident:"IDENT"> => Key::new(start, ident),
 }
 
 String: &'a str = {
     <"STRING"> => <>.trim_end(),
-}
-
-Ident: &'a str = {
-    <"IDENT"> => <>,
 }

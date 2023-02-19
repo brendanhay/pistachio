@@ -10,84 +10,53 @@ use std::{
     },
 };
 
-use crate::render::{
-    stack,
-    writer::Writer,
-    Context,
-    Escape,
-    Render,
-    RenderError,
+use crate::{
+    error::Error,
+    render::{
+        Context,
+        Render,
+        Writer,
+    },
 };
 
 macro_rules! impl_map {
     () => {
+        #[inline]
         fn is_truthy(&self) -> bool {
             !self.is_empty()
         }
 
         #[inline]
-        fn render_section<S, W>(
+        fn render_named(
             &self,
-            context: Context<S>,
-            writer: &mut W,
-        ) -> Result<(), RenderError<W::Error>>
-        where
-            S: stack::RenderStack,
-            W: Writer,
-        {
-            if self.is_truthy() {
-                context.push(self).render(writer)
+            key: &str,
+            context: Context,
+            writer: &mut Writer,
+        ) -> Result<bool, Error> {
+            match self.get(key) {
+                Some(v) => v.render(context, writer).map(|_| true),
+                None => Ok(false),
+            }
+        }
+
+        #[inline]
+        fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+            if self.section_is_truthy(context.section) {
+                context.push(self).render_to_writer(writer)
             } else {
                 Ok(())
             }
         }
 
         #[inline]
-        fn render_field_escape<W>(
+        fn render_named_section(
             &self,
             key: &str,
-            escape: Escape,
-            writer: &mut W,
-        ) -> Result<bool, RenderError<W::Error>>
-        where
-            W: Writer,
-        {
-            match self.get(key) {
-                Some(v) => v.render_escape(escape, writer).map(|_| true),
-                None => Ok(false),
-            }
-        }
-
-        #[inline]
-        fn render_field_section<S, W>(
-            &self,
-            key: &str,
-            context: Context<S>,
-            writer: &mut W,
-        ) -> Result<bool, RenderError<W::Error>>
-        where
-            S: stack::RenderStack,
-            W: Writer,
-        {
+            context: Context,
+            writer: &mut Writer,
+        ) -> Result<bool, Error> {
             match self.get(key) {
                 Some(v) => v.render_section(context, writer).map(|_| true),
-                None => Ok(false),
-            }
-        }
-
-        #[inline]
-        fn render_field_inverted_section<S, W>(
-            &self,
-            key: &str,
-            context: Context<S>,
-            writer: &mut W,
-        ) -> Result<bool, RenderError<W::Error>>
-        where
-            S: stack::RenderStack,
-            W: Writer,
-        {
-            match self.get(key) {
-                Some(v) => v.render_inverted_section(context, writer).map(|_| true),
                 None => Ok(false),
             }
         }

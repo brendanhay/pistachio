@@ -1,6 +1,5 @@
 #![feature(pattern)]
 #![warn(clippy::disallowed_types)]
-
 use std::{
     borrow::Cow,
     collections::hash_map::Entry,
@@ -9,7 +8,6 @@ use std::{
         OsString,
     },
     fs,
-    io,
     path::{
         Path,
         PathBuf,
@@ -18,14 +16,15 @@ use std::{
 
 #[cfg(feature = "macros")]
 pub use pistachio_macros::Render;
-#[cfg(feature = "serde_json")]
-pub use serde_json::{
-    json,
-    Value,
-};
 
+// #[cfg(feature = "serde_json")]
+// pub use serde_json::{
+//     json,
+//     Value,
+// };
 pub use self::{
     error::Error,
+    map::Map,
     parser::ParseError,
     render::Render,
     template::Template,
@@ -42,10 +41,9 @@ mod template;
 pub mod render;
 
 /// The caching strategy determining how templates are loaded.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub enum Cache {
     /// Cache non-dynamic templates by name, in memory.
-    #[default]
     Name,
 
     // ModifiedTime,
@@ -54,40 +52,73 @@ pub enum Cache {
     None,
 }
 
-// pub enum Flags,
+#[derive(Debug)]
+pub struct Builder {
+    directory: PathBuf,
+    extension: OsString,
+    cache: Cache,
+    raise: bool,
+}
 
-/// XXX: raise on variable miss - raise when partial/parent don't exist, etc.
+impl Builder {
+    pub fn build(self) -> Result<Pistachio, Error> {
+        println!("{:#?}", &self);
+
+        Ok(Pistachio {
+            directory: self.directory.canonicalize().map_err(Error::Io)?,
+            extension: self.extension,
+            templates: map::with_capacity(4),
+            cache: self.cache,
+            raise: self.raise,
+        })
+    }
+
+    pub fn directory<P: AsRef<Path>>(mut self, dir: P) -> Self {
+        self.directory = dir.as_ref().into();
+        self
+    }
+
+    pub fn extension<E: AsRef<OsStr>>(mut self, ext: E) -> Self {
+        self.extension = ext.as_ref().into();
+        self
+    }
+
+    pub fn reloading(mut self) -> Self {
+        self.cache = Cache::None;
+        self
+    }
+
+    pub fn missing_is_false(mut self) -> Self {
+        self.raise = false;
+        self
+    }
+}
 
 /// Everybody loves `Pistachio`.
+#[derive(Debug)]
 pub struct Pistachio {
-    root: PathBuf,
+    directory: PathBuf,
     extension: OsString,
     templates: map::Map<Cow<'static, str>, Template<'static>>,
     cache: Cache,
-    // raise: bool,
+    raise: bool,
 }
 
 impl Pistachio {
-    pub fn new<Dir>(dir: Dir) -> Result<Self, Error>
-    where
-        Dir: AsRef<Path>,
-    {
-        Self::configure(Cache::default(), dir, "mustache")
-    }
-
-    /// Create a new `Pistachio` using the specified caching strategy, with the specified
-    /// root directory and file extension as the search mechanism for loaded templates.
-    pub fn configure<Dir, Ext>(cache: Cache, dir: Dir, extension: Ext) -> Result<Self, Error>
-    where
-        Dir: AsRef<Path>,
-        Ext: AsRef<OsStr>,
-    {
-        Ok(Self {
-            root: dir.as_ref().canonicalize()?,
-            extension: extension.as_ref().into(),
-            templates: map::new(),
-            cache,
-        })
+    /// Create a new `Pistachio` with a `.mustache` file extension and the specified
+    /// root directory as the search mechanism for loading templates. Templates will
+    /// be parsed once and then cached in memory. If you want to reload templates
+    /// configure the caching strategy via [`Builder::reloading`].
+    ///
+    /// By default missing `{{key}}` variables will raise an error. To change this
+    /// behaviour, see [`Builder::missing_is_false`].
+    pub fn builder() -> Builder {
+        Builder {
+            directory: "examples".into(),
+            extension: "mustache".into(),
+            cache: Cache::Name,
+            raise: true,
+        }
     }
 
     /// Get an existing template from this `Pistachio`, reading it from the filesystem
@@ -125,26 +156,17 @@ impl Pistachio {
     #[inline]
     fn read_template(&mut self, name: Cow<'static, str>) -> Result<&Template<'static>, Error> {
         let path = self
-            .root
+            .directory
             .join(name.as_ref())
             .with_extension(&self.extension)
-            .canonicalize()?;
+            .canonicalize()
+            .map_err(Error::Io)?;
 
-        if !path.starts_with(&self.root) {
-            return Err(Error::InvalidPartial(path.display().to_string().into()));
+        if !path.starts_with(&self.directory) {
+            return Err(Error::InvalidPartial(Box::from(path.display().to_string())));
         }
 
-        let source = match fs::read_to_string(&path) {
-            Ok(file) => Ok(file),
-            Err(err) => {
-                if err.kind() == io::ErrorKind::NotFound {
-                    Err(Error::NotFound(name.to_string().into()))
-                } else {
-                    Err(Error::Io(err))
-                }
-            },
-        }?;
-
+        let source = fs::read_to_string(&path).map_err(Error::Io)?;
         let template = Template::with_loader(source.into(), self)?;
 
         Ok(self.insert_template(name, template))
@@ -181,7 +203,6 @@ impl<'a> Loader<'a> for LoadingDisabled {
         Err(Error::LoadingDisabled)
     }
 }
-
 impl Loader<'static> for Pistachio {
     fn get_template(&mut self, name: &'static str) -> Result<&Template<'static>, Error> {
         if !self.templates.contains_key(name) {
@@ -191,45 +212,3 @@ impl Loader<'static> for Pistachio {
         Ok(&self.templates[name])
     }
 }
-
-// #[macro_export]
-// #[doc(hidden)]
-// macro_rules! __context_pair {
-//     ($ctx:ident, $key:ident) => {{
-//         $crate::__context_pair!($ctx, $key, $key);
-//     }};
-//     ($ctx:ident, $key:ident, $value:expr) => {
-//         $crate::__context::add(
-//             &mut $ctx,
-//             stringify!($key),
-//             $crate::value::Value::from_serializable(&$value),
-//         );
-//     };
-// }
-
-// #[doc(hidden)]
-// pub mod __context {
-//     use crate::data::Data;
-
-//     #[inline(always)]
-//     pub fn new() -> HashMap<String, >{
-//         ValueMap::default()
-//     }
-
-//     #[inline(always)]
-//     pub fn add(ctx: &mut ValueMap, key: &'static str, value: Value) {
-//         ctx.insert(Key::Str(key), value);
-//     }
-
-//     #[inline(always)]
-//     pub fn build(ctx: ValueMap) -> Value {
-//         ValueRepr::Map(Arc::new(ctx), MapType::Normal).into()
-//     }
-
-//     pub fn thread_local_env() -> Environment<'static> {
-//         thread_local! {
-//             static ENV: Environment<'static> = Environment::new()
-//         }
-//         ENV.with(|x| x.clone())
-//     }
-// }

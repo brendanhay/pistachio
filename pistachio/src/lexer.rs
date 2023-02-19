@@ -132,7 +132,7 @@ impl<'a> Lexer<'a> {
                     }
                 )*
                 else {
-                    Err(Error::Lexer(Box::from(
+                    Err(Error::ParsingFailed(Box::from(
                         format!("failed to scan {}, {}", self.position, &self.source)
                     )))
                 }

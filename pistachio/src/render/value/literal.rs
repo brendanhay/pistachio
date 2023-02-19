@@ -1,9 +1,9 @@
 use crate::{
+    error::Error,
     render::{
-        writer::Writer,
-        Escape,
+        Context,
         Render,
-        RenderError,
+        Writer,
     },
     Template,
 };
@@ -17,43 +17,35 @@ impl Render for () {
 
 impl Render for String {
     #[inline]
-    fn is_truthy(&self) -> bool {
-        !self.is_empty()
-    }
-
-    #[inline]
     fn size_hint(&self, _template: &Template) -> usize {
         self.len()
     }
 
     #[inline]
-    fn render_escape<W: Writer>(
-        &self,
-        escape: Escape,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>> {
-        writer.write_escape(self, escape).map_err(Into::into)
+    fn is_truthy(&self) -> bool {
+        !self.is_empty()
+    }
+
+    #[inline]
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        writer.write(context.escape, self)
     }
 }
 
 impl Render for str {
     #[inline]
-    fn is_truthy(&self) -> bool {
-        !self.is_empty()
-    }
-
-    #[inline]
     fn size_hint(&self, _template: &Template) -> usize {
         self.len()
     }
 
     #[inline]
-    fn render_escape<W: Writer>(
-        &self,
-        escape: Escape,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>> {
-        writer.write_escape(self, escape).map_err(Into::into)
+    fn is_truthy(&self) -> bool {
+        !self.is_empty()
+    }
+
+    #[inline]
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        writer.write(context.escape, self)
     }
 }
 
@@ -69,13 +61,7 @@ impl Render for bool {
     }
 
     #[inline]
-    fn render_escape<W: Writer>(
-        &self,
-        escape: Escape,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>> {
-        writer
-            .write_escape(if *self { "true" } else { "false" }, escape)
-            .map_err(Into::into)
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        writer.write(context.escape, if *self { "true" } else { "false" })
     }
 }

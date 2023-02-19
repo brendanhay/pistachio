@@ -1,21 +1,14 @@
 use crate::{
+    error::Error,
     render::{
-        stack::RenderStack,
-        writer::Writer,
         Context,
-        Escape,
         Render,
-        RenderError,
+        Writer,
     },
     Template,
 };
 
 impl<T: Render> Render for Option<T> {
-    #[inline]
-    fn is_truthy(&self) -> bool {
-        self.is_some()
-    }
-
     #[inline]
     fn size_hint(&self, template: &Template) -> usize {
         match self {
@@ -25,28 +18,21 @@ impl<T: Render> Render for Option<T> {
     }
 
     #[inline]
-    fn render_escape<W: Writer>(
-        &self,
-        escape: Escape,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>> {
+    fn is_truthy(&self) -> bool {
+        self.is_some()
+    }
+
+    #[inline]
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         if let Some(inner) = self {
-            inner.render_escape(escape, writer)?;
+            inner.render(context, writer)?;
         }
 
         Ok(())
     }
 
     #[inline]
-    fn render_section<S, W>(
-        &self,
-        context: Context<S>,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         if let Some(item) = self {
             item.render_section(context, writer)?;
         }
@@ -57,11 +43,6 @@ impl<T: Render> Render for Option<T> {
 
 impl<T: Render, E> Render for Result<T, E> {
     #[inline]
-    fn is_truthy(&self) -> bool {
-        self.is_ok()
-    }
-
-    #[inline]
     fn size_hint(&self, template: &Template) -> usize {
         match self {
             Ok(inner) => inner.size_hint(template),
@@ -70,28 +51,21 @@ impl<T: Render, E> Render for Result<T, E> {
     }
 
     #[inline]
-    fn render_escape<W: Writer>(
-        &self,
-        escape: Escape,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>> {
+    fn is_truthy(&self) -> bool {
+        self.is_ok()
+    }
+
+    #[inline]
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         if let Ok(inner) = self {
-            inner.render_escape(escape, writer)?;
+            inner.render(context, writer)?;
         }
 
         Ok(())
     }
 
     #[inline]
-    fn render_section<S, W>(
-        &self,
-        context: Context<S>,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         if let Ok(item) = self {
             item.render_section(context, writer)?;
         }
