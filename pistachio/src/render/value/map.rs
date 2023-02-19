@@ -28,6 +28,7 @@ macro_rules! impl_map {
         #[inline]
         fn render_section<S, W>(
             &self,
+            key: &str,
             context: Context<S>,
             writer: &mut W,
         ) -> Result<(), RenderError<W::Error>>
@@ -36,7 +37,12 @@ macro_rules! impl_map {
             W: Writer,
         {
             if self.is_truthy() {
-                context.push(self).render(writer)
+                let frame = stack::Frame {
+                    name: key,
+                    data: self,
+                };
+
+                context.push(&frame).render(writer)
             } else {
                 Ok(())
             }
@@ -70,7 +76,7 @@ macro_rules! impl_map {
             W: Writer,
         {
             match self.get(key) {
-                Some(v) => v.render_section(context, writer).map(|_| true),
+                Some(v) => v.render_section(key, context, writer).map(|_| true),
                 None => Ok(false),
             }
         }
@@ -87,7 +93,9 @@ macro_rules! impl_map {
             W: Writer,
         {
             match self.get(key) {
-                Some(v) => v.render_inverted_section(context, writer).map(|_| true),
+                Some(v) => v
+                    .render_inverted_section(key, context, writer)
+                    .map(|_| true),
                 None => Ok(false),
             }
         }

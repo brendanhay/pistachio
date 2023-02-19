@@ -5,8 +5,10 @@ use std::{
 
 use super::{
     stack::{
+        Frame,
         PushStack,
         RenderStack,
+        Trace,
     },
     writer::Writer,
     Escape,
@@ -44,7 +46,7 @@ where
     #[inline]
     pub fn push<X>(self, frame: &X) -> Context<'a, PushStack<S, &X>>
     where
-        X: Render + ?Sized,
+        X: ?Sized + Render + Trace,
     {
         Context {
             raise: self.raise,
@@ -81,9 +83,11 @@ where
                 Tag::Escaped => {
                     let found = self
                         .stack
-                        .render_field_escape(node.key, Escape::Html, writer)?;
+                        .render_stack_escape(node.key, Escape::Html, writer)?;
 
                     if !found && self.raise {
+                        let trace = self.stack.trace();
+
                         return Err(RenderError::MissingVariable(node.key.into()));
                     }
                 },
@@ -91,7 +95,7 @@ where
                 Tag::Unescaped => {
                     let found = self
                         .stack
-                        .render_field_escape(node.key, Escape::None, writer)?;
+                        .render_stack_escape(node.key, Escape::None, writer)?;
 
                     if !found && self.raise {
                         return Err(RenderError::MissingVariable(node.key.into()));
@@ -100,7 +104,7 @@ where
 
                 Tag::Section => {
                     let children = node.len;
-                    self.stack.render_field_section(
+                    self.stack.render_stack_section(
                         node.key,
                         self.children(index..index + children),
                         writer,
@@ -111,7 +115,7 @@ where
 
                 Tag::Inverted => {
                     let children = node.len;
-                    self.stack.render_field_inverted_section(
+                    self.stack.render_stack_inverted_section(
                         node.key,
                         self.children(index..index + children),
                         writer,

@@ -10,9 +10,9 @@ pub use self::{
 use crate::template::Template;
 
 mod context;
-mod stack;
 mod writer;
 
+pub mod stack;
 pub(crate) mod value;
 
 #[derive(Debug, Clone, Copy)]
@@ -59,6 +59,7 @@ pub trait Render {
     #[inline]
     fn render_section<S, W>(
         &self,
+        _key: &str,
         context: Context<S>,
         writer: &mut W,
     ) -> Result<(), RenderError<W::Error>>
@@ -76,6 +77,7 @@ pub trait Render {
     #[inline]
     fn render_inverted_section<S, W>(
         &self,
+        _key: &str,
         context: Context<S>,
         writer: &mut W,
     ) -> Result<(), RenderError<W::Error>>

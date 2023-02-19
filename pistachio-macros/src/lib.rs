@@ -161,13 +161,13 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
 
     let render_field_section = fields.iter().map(|Field { key, field, .. }| {
         quote! {
-            #key => self.#field.render_section(context, writer).map(|_| true),
+            #key => self.#field.render_section(#key, context, writer).map(|_| true),
         }
     });
 
     let render_field_inverted_section = fields.iter().map(|Field { key, field, .. }| {
         quote! {
-            #key => self.#field.render_inverted_section(context, writer).map(|_| true),
+            #key => self.#field.render_inverted_section(#key, context, writer).map(|_| true),
         }
     });
 
@@ -193,6 +193,7 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
             #[inline]
             fn render_section<S, W>(
                 &self,
+                key: &str,
                 context: ::pistachio::render::Context<S>,
                 writer: &mut W
             ) -> std::result::Result<(), ::pistachio::render::RenderError<W::Error>>
@@ -200,7 +201,9 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
                 S: ::pistachio::render::RenderStack,
                 W: ::pistachio::render::Writer,
             {
-                context.push(self).render(writer)
+                let frame = ::pistachio::render::stack::Frame { name: key, data: self };
+
+                context.push(&frame).render(writer)
             }
 
             #[inline]

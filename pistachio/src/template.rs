@@ -11,6 +11,7 @@ use crate::{
     map,
     parser::Parser,
     render::{
+        stack,
         Context,
         EscapedWriter,
         Render,
@@ -89,27 +90,30 @@ impl<'a> Template<'a> {
 
     pub fn render_to_string<S: Render>(
         &self,
-        vars: &S,
+        data: &S,
         buffer: &mut String,
     ) -> Result<(), RenderError<Infallible>> {
+        let frame = stack::Frame { name: ".", data };
+
         // Writing to a String is Infallible
         Context::new(self.raise, &self.nodes)
-            .push(vars)
+            .push(&frame)
             .render(buffer)
     }
 
     pub fn render_to_writer<S, W>(
         &self,
-        vars: &S,
+        data: &S,
         writer: &mut W,
     ) -> Result<(), RenderError<io::Error>>
     where
         S: Render,
         W: io::Write,
     {
+        let frame = stack::Frame { name: ".", data };
         let mut writer = EscapedWriter::new(writer);
         let () = Context::new(self.raise, &self.nodes)
-            .push(vars)
+            .push(&frame)
             .render(&mut writer)?;
 
         Ok(())
