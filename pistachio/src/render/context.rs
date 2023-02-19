@@ -67,12 +67,14 @@ where
 
             match node.tag {
                 Tag::Escaped => {
-                    self.stack
+                    let success = self
+                        .stack
                         .render_field_escape(node.key, Escape::Html, writer)?;
                 },
 
                 Tag::Unescaped => {
-                    self.stack
+                    let success = self
+                        .stack
                         .render_field_escape(node.key, Escape::None, writer)?;
                 },
 
