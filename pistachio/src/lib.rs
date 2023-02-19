@@ -54,6 +54,8 @@ pub enum Cache {
     None,
 }
 
+// pub enum Flags,
+
 /// XXX: raise on variable miss - raise when partial/parent don't exist, etc.
 
 /// Everybody loves `Pistachio`.

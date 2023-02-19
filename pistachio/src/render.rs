@@ -21,6 +21,21 @@ pub enum Escape {
     None,
 }
 
+// Since this is disjoint over the writers, maybe move this into the associated Writer::Error type:
+//     IOWriter:     IOError | MissingVariable
+//     StringWriter: Infallible | MissingVariable
+#[derive(Debug)]
+pub enum RenderError<W> {
+    MissingVariable(Box<str>),
+    WriteError(W),
+}
+
+impl<W> From<W> for RenderError<W> {
+    fn from(err: W) -> Self {
+        RenderError::WriteError(err)
+    }
+}
+
 pub trait Render {
     #[inline]
     fn is_truthy(&self) -> bool {
@@ -33,12 +48,20 @@ pub trait Render {
     }
 
     #[inline]
-    fn render_escape<W: Writer>(&self, _escape: Escape, _writer: &mut W) -> Result<(), W::Error> {
+    fn render_escape<W: Writer>(
+        &self,
+        _escape: Escape,
+        _writer: &mut W,
+    ) -> Result<(), RenderError<W::Error>> {
         Ok(())
     }
 
     #[inline]
-    fn render_section<S, W>(&self, context: Context<S>, writer: &mut W) -> Result<(), W::Error>
+    fn render_section<S, W>(
+        &self,
+        context: Context<S>,
+        writer: &mut W,
+    ) -> Result<(), RenderError<W::Error>>
     where
         S: RenderStack,
         W: Writer,
@@ -55,7 +78,7 @@ pub trait Render {
         &self,
         context: Context<S>,
         writer: &mut W,
-    ) -> Result<(), W::Error>
+    ) -> Result<(), RenderError<W::Error>>
     where
         S: RenderStack,
         W: Writer,
@@ -73,7 +96,7 @@ pub trait Render {
         _key: &str,
         _escape: Escape,
         _writer: &mut W,
-    ) -> Result<bool, W::Error> {
+    ) -> Result<bool, RenderError<W::Error>> {
         Ok(false)
     }
 
@@ -83,7 +106,7 @@ pub trait Render {
         _key: &str,
         _context: Context<S>,
         _writer: &mut W,
-    ) -> Result<bool, W::Error>
+    ) -> Result<bool, RenderError<W::Error>>
     where
         S: RenderStack,
         W: Writer,
@@ -97,7 +120,7 @@ pub trait Render {
         _key: &str,
         _context: Context<S>,
         _writer: &mut W,
-    ) -> Result<bool, W::Error>
+    ) -> Result<bool, RenderError<W::Error>>
     where
         S: RenderStack,
         W: Writer,

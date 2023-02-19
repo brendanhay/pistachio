@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    convert::Infallible,
     fmt,
     io,
     iter,
@@ -13,6 +14,7 @@ use crate::{
         Context,
         EscapedWriter,
         Render,
+        RenderError,
     },
     Error,
     Loader,
@@ -25,6 +27,7 @@ pub struct Template<'a> {
     pub(crate) size_hint: usize,
     pub(crate) nodes: Vec<Node<'a>>,
     source: Cow<'a, str>,
+    raise: bool,
 }
 
 impl<'a> Template<'a> {
@@ -53,6 +56,7 @@ impl<'a> Template<'a> {
                 size_hint: 0,
                 nodes: Vec::new(),
                 source,
+                raise: true,
             });
         }
 
@@ -66,10 +70,11 @@ impl<'a> Template<'a> {
             size_hint,
             nodes,
             source,
+            raise: true,
         })
     }
 
-    pub fn render<S: Render>(&self, vars: &S) -> String {
+    pub fn render<S: Render>(&self, vars: &S) -> Result<String, RenderError<Infallible>> {
         // let data = encoder::to_data(data)?;
         let mut capacity = vars.size_hint(self);
 
@@ -77,23 +82,35 @@ impl<'a> Template<'a> {
         capacity += capacity / 4;
 
         let mut buffer = String::with_capacity(capacity);
-        let _ = self.render_to_string(vars, &mut buffer);
+        let _ = self.render_to_string(vars, &mut buffer)?;
 
-        buffer
+        Ok(buffer)
     }
 
-    pub fn render_to_string<S: Render>(&self, vars: &S, buffer: &mut String) {
+    pub fn render_to_string<S: Render>(
+        &self,
+        vars: &S,
+        buffer: &mut String,
+    ) -> Result<(), RenderError<Infallible>> {
         // Writing to a String is Infallible
-        let _ = Context::new(&self.nodes).push(vars).render(buffer);
+        Context::new(self.raise, &self.nodes)
+            .push(vars)
+            .render(buffer)
     }
 
-    pub fn render_to_writer<S, W>(&self, vars: &S, writer: &mut W) -> Result<(), Error>
+    pub fn render_to_writer<S, W>(
+        &self,
+        vars: &S,
+        writer: &mut W,
+    ) -> Result<(), RenderError<io::Error>>
     where
         S: Render,
         W: io::Write,
     {
         let mut writer = EscapedWriter::new(writer);
-        let () = Context::new(&self.nodes).push(vars).render(&mut writer)?;
+        let () = Context::new(self.raise, &self.nodes)
+            .push(vars)
+            .render(&mut writer)?;
 
         Ok(())
     }

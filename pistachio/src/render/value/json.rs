@@ -11,6 +11,7 @@ use crate::{
         Context,
         Escape,
         Render,
+        RenderError,
         Writer,
     },
     Template,
@@ -42,7 +43,11 @@ impl Render for Value {
     }
 
     #[inline]
-    fn render_escape<W: Writer>(&self, escape: Escape, writer: &mut W) -> Result<(), W::Error> {
+    fn render_escape<W: Writer>(
+        &self,
+        escape: Escape,
+        writer: &mut W,
+    ) -> Result<(), RenderError<W::Error>> {
         match self {
             Value::Null => ().render_escape(escape, writer),
             Value::Bool(b) => b.render_escape(escape, writer),
@@ -54,7 +59,11 @@ impl Render for Value {
     }
 
     #[inline]
-    fn render_section<S, W>(&self, context: Context<S>, writer: &mut W) -> Result<(), W::Error>
+    fn render_section<S, W>(
+        &self,
+        context: Context<S>,
+        writer: &mut W,
+    ) -> Result<(), RenderError<W::Error>>
     where
         S: stack::RenderStack,
         W: Writer,
@@ -74,7 +83,7 @@ impl Render for Value {
         &self,
         context: Context<S>,
         writer: &mut W,
-    ) -> Result<(), W::Error>
+    ) -> Result<(), RenderError<W::Error>>
     where
         S: stack::RenderStack,
         W: Writer,
@@ -95,7 +104,7 @@ impl Render for Value {
         key: &str,
         escape: Escape,
         writer: &mut W,
-    ) -> Result<bool, W::Error> {
+    ) -> Result<bool, RenderError<W::Error>> {
         match self {
             Value::Null => ().render_field_escape(key, escape, writer),
             Value::Bool(b) => b.render_field_escape(key, escape, writer),
@@ -112,7 +121,7 @@ impl Render for Value {
         key: &str,
         context: Context<S>,
         writer: &mut W,
-    ) -> Result<bool, W::Error>
+    ) -> Result<bool, RenderError<W::Error>>
     where
         S: stack::RenderStack,
         W: Writer,
@@ -133,7 +142,7 @@ impl Render for Value {
         key: &str,
         context: Context<S>,
         writer: &mut W,
-    ) -> Result<bool, W::Error>
+    ) -> Result<bool, RenderError<W::Error>>
     where
         S: stack::RenderStack,
         W: Writer,
@@ -181,7 +190,11 @@ impl Render for Number {
     }
 
     #[inline]
-    fn render_escape<W: Writer>(&self, escape: Escape, writer: &mut W) -> Result<(), W::Error> {
+    fn render_escape<W: Writer>(
+        &self,
+        escape: Escape,
+        writer: &mut W,
+    ) -> Result<(), RenderError<W::Error>> {
         if let Some(n) = self.as_f64() {
             n.render_escape(escape, writer)
         } else if let Some(n) = self.as_u64() {

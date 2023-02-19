@@ -2,6 +2,7 @@ use crate::{
     render::{
         Escape,
         Render,
+        RenderError,
         Writer,
     },
     Template,
@@ -26,8 +27,8 @@ macro_rules! impl_numbers {
                     &self,
                     _escape: Escape,
                     writer: &mut W
-                ) -> Result<(), W::Error> {
-                    writer.format_escape(Escape::None, self)
+                ) -> Result<(), RenderError<W::Error>> {
+                    writer.format_escape(Escape::None, self).map_err(Into::into)
                 }
             }
         )*
@@ -56,8 +57,8 @@ macro_rules! impl_float {
                     &self,
                     _escape: Escape,
                     writer: &mut W,
-                ) -> Result<(), W::Error> {
-                    writer.format_escape(Escape::None, self)
+                ) -> Result<(), RenderError<W::Error>> {
+                    writer.format_escape(Escape::None, self).map_err(Into::into)
                 }
             }
         )*

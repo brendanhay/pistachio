@@ -191,7 +191,11 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
             }
 
             #[inline]
-            fn render_section<S, W>(&self, context: ::pistachio::render::Context<S>, writer: &mut W) -> std::result::Result<(), W::Error>
+            fn render_section<S, W>(
+                &self,
+                context: ::pistachio::render::Context<S>,
+                writer: &mut W
+            ) -> std::result::Result<(), ::pistachio::render::RenderError<W::Error>>
             where
                 S: ::pistachio::render::RenderStack,
                 W: ::pistachio::render::Writer,
@@ -200,7 +204,12 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
             }
 
             #[inline]
-            fn render_field_escape<W>(&self, key: &str, escape: ::pistachio::render::Escape, writer: &mut W) -> std::result::Result<bool, W::Error>
+            fn render_field_escape<W>(
+                &self,
+                key: &str,
+                escape: ::pistachio::render::Escape,
+                writer: &mut W
+            ) -> std::result::Result<bool, ::pistachio::render::RenderError<W::Error>>
             where
                 W: ::pistachio::render::Writer,
             {
@@ -214,7 +223,12 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
             }
 
             #[inline]
-            fn render_field_section<S, W>(&self, key: &str, context: ::pistachio::render::Context<S>, writer: &mut W) -> std::result::Result<bool, W::Error>
+            fn render_field_section<S, W>(
+                &self,
+                key: &str,
+                context: ::pistachio::render::Context<S>,
+                writer: &mut W
+            ) -> std::result::Result<bool, ::pistachio::render::RenderError<W::Error>>
             where
                 S: ::pistachio::render::RenderStack,
                 W: ::pistachio::render::Writer,
@@ -229,7 +243,12 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
             }
 
             #[inline]
-            fn render_field_inverted_section<S, W>(&self, key: &str, context: ::pistachio::render::Context<S>, writer: &mut W) -> std::result::Result<bool, W::Error>
+            fn render_field_inverted_section<S, W>(
+                &self,
+                key: &str,
+                context: ::pistachio::render::Context<S>,
+                writer: &mut W
+            ) -> std::result::Result<bool, ::pistachio::render::RenderError<W::Error>>
             where
                 S: ::pistachio::render::RenderStack,
                 W: ::pistachio::render::Writer,

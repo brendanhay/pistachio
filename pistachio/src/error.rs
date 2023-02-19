@@ -7,7 +7,10 @@ use std::{
 use crate::{
     lexer::Token,
     parser::ParseError,
+    render::RenderError,
 };
+
+// XXX: Tidy this up
 
 /// Error type used that can be emitted during template parsing.
 #[derive(Debug)]
@@ -16,6 +19,7 @@ pub enum Error {
     Io(io::Error),
     Lexer(Box<str>),
     Parser(Box<str>),
+    Render(Box<str>),
     ParsingFailed(ParseError<Box<str>, Box<Error>>),
     InvalidPartial(Box<str>),
     LoadingDisabled,
@@ -27,6 +31,15 @@ impl error::Error for Error {}
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
         Error::Io(err)
+    }
+}
+
+impl From<RenderError<io::Error>> for Error {
+    fn from(err: RenderError<io::Error>) -> Self {
+        match err {
+            RenderError::WriteError(io) => Error::Io(io),
+            RenderError::MissingVariable(v) => Error::Render(v),
+        }
     }
 }
 
@@ -47,6 +60,7 @@ impl fmt::Display for Error {
             Io(err) => err.fmt(f),
             Lexer(err) => err.fmt(f),
             Parser(err) => err.fmt(f),
+            Render(err) => err.fmt(f),
             ParsingFailed(err) => err.fmt(f),
             LoadingDisabled => write!(f, "Partials are not allowed in the current context"),
             InvalidPartial(path) => path.fmt(f),

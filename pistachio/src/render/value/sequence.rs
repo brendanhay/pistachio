@@ -1,6 +1,7 @@
 use crate::render::{
     Context,
     Render,
+    RenderError,
     RenderStack,
     Writer,
 };
@@ -13,7 +14,11 @@ macro_rules! impl_sequence {
         }
 
         #[inline]
-        fn render_section<S, W>(&self, context: Context<S>, writer: &mut W) -> Result<(), W::Error>
+        fn render_section<S, W>(
+            &self,
+            context: Context<S>,
+            writer: &mut W,
+        ) -> Result<(), RenderError<W::Error>>
         where
             S: RenderStack,
             W: Writer,

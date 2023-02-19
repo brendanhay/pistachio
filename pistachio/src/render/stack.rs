@@ -2,6 +2,7 @@ use super::{
     Context,
     Escape,
     Render,
+    RenderError,
     Writer,
 };
 
@@ -84,7 +85,7 @@ pub trait RenderStack: Sized + Copy + Stack {
         _key: &str,
         _escape: Escape,
         _writer: &mut W,
-    ) -> Result<bool, W::Error> {
+    ) -> Result<bool, RenderError<W::Error>> {
         Ok(false)
     }
 
@@ -94,7 +95,7 @@ pub trait RenderStack: Sized + Copy + Stack {
         _key: &str,
         _context: Context<'a, S>,
         _writer: &mut W,
-    ) -> Result<(), W::Error>
+    ) -> Result<(), RenderError<W::Error>>
     where
         S: RenderStack,
         W: Writer,
@@ -108,7 +109,7 @@ pub trait RenderStack: Sized + Copy + Stack {
         _key: &str,
         _context: Context<'a, S>,
         _writer: &mut W,
-    ) -> Result<(), W::Error>
+    ) -> Result<(), RenderError<W::Error>>
     where
         S: RenderStack,
         W: Writer,
@@ -134,7 +135,7 @@ where
         key: &str,
         escape: Escape,
         writer: &mut W,
-    ) -> Result<bool, W::Error> {
+    ) -> Result<bool, RenderError<W::Error>> {
         if self.5.render_field_escape(key, escape, writer)?
             || self.4.render_field_escape(key, escape, writer)?
             || self.3.render_field_escape(key, escape, writer)?
@@ -154,7 +155,7 @@ where
         key: &str,
         context: Context<'a, S>,
         writer: &mut W,
-    ) -> Result<(), W::Error>
+    ) -> Result<(), RenderError<W::Error>>
     where
         S: RenderStack,
         W: Writer,
@@ -185,7 +186,7 @@ where
         key: &str,
         context: Context<'a, S>,
         writer: &mut W,
-    ) -> Result<(), W::Error>
+    ) -> Result<(), RenderError<W::Error>>
     where
         S: RenderStack,
         W: Writer,

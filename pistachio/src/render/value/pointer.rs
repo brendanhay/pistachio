@@ -12,6 +12,7 @@ use crate::{
         Context,
         Escape,
         Render,
+        RenderError,
     },
     Template,
 };
@@ -31,7 +32,7 @@ macro_rules! impl_pointers {
                 }
 
                 #[inline]
-                fn render_escape<W: Writer>(&self, escape: Escape, writer: &mut W) -> Result<(), W::Error> {
+                fn render_escape<W: Writer>(&self, escape: Escape, writer: &mut W) -> Result<(), RenderError<W::Error>> {
                     self.deref().render_escape(escape, writer)
                 }
 
@@ -40,7 +41,7 @@ macro_rules! impl_pointers {
                     &self,
                     context: Context<S>,
                     writer: &mut W,
-                ) -> Result<(), W::Error>
+                ) -> Result<(), RenderError<W::Error>>
                 where
                     S: RenderStack,
                     W: Writer,
@@ -53,7 +54,7 @@ macro_rules! impl_pointers {
                     &self,
                     context: Context<S>,
                     writer: &mut W,
-                ) -> Result<(), W::Error>
+                ) -> Result<(), RenderError<W::Error>>
                 where
                     S: RenderStack,
                     W: Writer,
@@ -67,7 +68,7 @@ macro_rules! impl_pointers {
                     key: &str,
                     escape: Escape,
                     writer: &mut W,
-                ) -> Result<bool, W::Error> {
+                ) -> Result<bool, RenderError<W::Error>> {
                     self.deref().render_field_escape(key, escape, writer)
                 }
 
@@ -77,7 +78,7 @@ macro_rules! impl_pointers {
                     key: &str,
                     context: Context<S>,
                     writer: &mut W,
-                ) -> Result<bool, W::Error>
+                ) -> Result<bool, RenderError<W::Error>>
                 where
                     S: RenderStack,
                     W: Writer,
@@ -91,7 +92,7 @@ macro_rules! impl_pointers {
                     key: &str,
                     context: Context<S>,
                     writer: &mut W,
-                ) -> Result<bool, W::Error>
+                ) -> Result<bool, RenderError<W::Error>>
                 where
                     S: RenderStack,
                     W: Writer,

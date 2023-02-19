@@ -306,6 +306,7 @@ name = "pistachio"
 version = "0.1.0"
 dependencies = [
  "ahash",
+ "bitflags",
  "lalrpop",
  "lalrpop-util",
  "pistachio-macros",

@@ -16,6 +16,7 @@ use crate::render::{
     Context,
     Escape,
     Render,
+    RenderError,
 };
 
 macro_rules! impl_map {
@@ -25,7 +26,11 @@ macro_rules! impl_map {
         }
 
         #[inline]
-        fn render_section<S, W>(&self, context: Context<S>, writer: &mut W) -> Result<(), W::Error>
+        fn render_section<S, W>(
+            &self,
+            context: Context<S>,
+            writer: &mut W,
+        ) -> Result<(), RenderError<W::Error>>
         where
             S: stack::RenderStack,
             W: Writer,
@@ -43,7 +48,7 @@ macro_rules! impl_map {
             key: &str,
             escape: Escape,
             writer: &mut W,
-        ) -> Result<bool, W::Error>
+        ) -> Result<bool, RenderError<W::Error>>
         where
             W: Writer,
         {
@@ -59,7 +64,7 @@ macro_rules! impl_map {
             key: &str,
             context: Context<S>,
             writer: &mut W,
-        ) -> Result<bool, W::Error>
+        ) -> Result<bool, RenderError<W::Error>>
         where
             S: stack::RenderStack,
             W: Writer,
@@ -76,7 +81,7 @@ macro_rules! impl_map {
             key: &str,
             context: Context<S>,
             writer: &mut W,
-        ) -> Result<bool, W::Error>
+        ) -> Result<bool, RenderError<W::Error>>
         where
             S: stack::RenderStack,
             W: Writer,

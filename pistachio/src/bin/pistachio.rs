@@ -10,6 +10,16 @@ struct Vars<'a> {
     steve: &'a str,
 }
 
+use bitflags::bitflags;
+
+bitflags! {
+    struct RenderFlags: u32 {
+        const RAISE = 0b00000001;
+        const B = 0b00000010;
+        const C = 0b00000100;
+    }
+}
+
 fn main() {
     let mut pistachio = Pistachio::new("examples").unwrap();
 
@@ -33,7 +43,7 @@ fn main() {
             });
             let html = template.render(&vars);
             println!("{:#?}", vars);
-            println!("{}", html);
+            println!("{:?}", html);
             println!("----------");
             let vars = Vars {
                 title: "this is a title",
@@ -41,7 +51,7 @@ fn main() {
             };
             let html = template.render(&vars);
             println!("{:#?}", vars);
-            println!("{}", html);
+            println!("{:?}", html);
             println!("----------");
         },
     }

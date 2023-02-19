@@ -5,6 +5,7 @@ use crate::{
         Context,
         Escape,
         Render,
+        RenderError,
     },
     Template,
 };
@@ -24,7 +25,11 @@ impl<T: Render> Render for Option<T> {
     }
 
     #[inline]
-    fn render_escape<W: Writer>(&self, escape: Escape, writer: &mut W) -> Result<(), W::Error> {
+    fn render_escape<W: Writer>(
+        &self,
+        escape: Escape,
+        writer: &mut W,
+    ) -> Result<(), RenderError<W::Error>> {
         if let Some(inner) = self {
             inner.render_escape(escape, writer)?;
         }
@@ -33,7 +38,11 @@ impl<T: Render> Render for Option<T> {
     }
 
     #[inline]
-    fn render_section<S, W>(&self, context: Context<S>, writer: &mut W) -> Result<(), W::Error>
+    fn render_section<S, W>(
+        &self,
+        context: Context<S>,
+        writer: &mut W,
+    ) -> Result<(), RenderError<W::Error>>
     where
         S: RenderStack,
         W: Writer,
@@ -61,7 +70,11 @@ impl<T: Render, E> Render for Result<T, E> {
     }
 
     #[inline]
-    fn render_escape<W: Writer>(&self, escape: Escape, writer: &mut W) -> Result<(), W::Error> {
+    fn render_escape<W: Writer>(
+        &self,
+        escape: Escape,
+        writer: &mut W,
+    ) -> Result<(), RenderError<W::Error>> {
         if let Ok(inner) = self {
             inner.render_escape(escape, writer)?;
         }
@@ -70,7 +83,11 @@ impl<T: Render, E> Render for Result<T, E> {
     }
 
     #[inline]
-    fn render_section<S, W>(&self, context: Context<S>, writer: &mut W) -> Result<(), W::Error>
+    fn render_section<S, W>(
+        &self,
+        context: Context<S>,
+        writer: &mut W,
+    ) -> Result<(), RenderError<W::Error>>
     where
         S: RenderStack,
         W: Writer,
