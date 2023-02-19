@@ -44,13 +44,13 @@ where
     S: RenderStack,
 {
     #[inline]
-    pub fn push<X>(self, frame: &X) -> Context<'a, PushStack<S, &X>>
+    pub fn push<X>(self, name: &'a str, data: &'a X) -> Context<'a, PushStack<S, Frame<'a, X>>>
     where
-        X: ?Sized + Render + Trace,
+        X: Render,
     {
         Context {
             raise: self.raise,
-            stack: self.stack.push(frame),
+            stack: self.stack.push(Frame { name, data }),
             nodes: self.nodes,
         }
     }
@@ -86,9 +86,11 @@ where
                         .render_stack_escape(node.key, Escape::Html, writer)?;
 
                     if !found && self.raise {
-                        let trace = self.stack.trace();
+                        let mut trace = self.stack.trace();
+                        trace.push(node.key);
+                        let trace = trace.join(".").into();
 
-                        return Err(RenderError::MissingVariable(node.key.into()));
+                        return Err(RenderError::MissingVariable(trace));
                     }
                 },
 
@@ -98,7 +100,11 @@ where
                         .render_stack_escape(node.key, Escape::None, writer)?;
 
                     if !found && self.raise {
-                        return Err(RenderError::MissingVariable(node.key.into()));
+                        let mut trace = self.stack.trace();
+                        trace.push(node.key);
+                        let trace = trace.join(".").into();
+
+                        return Err(RenderError::MissingVariable(trace));
                     }
                 },
 

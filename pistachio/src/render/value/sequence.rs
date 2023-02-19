@@ -25,7 +25,7 @@ macro_rules! impl_sequence {
             W: Writer,
         {
             for (index, item) in self.iter().enumerate() {
-                item.render_section(INDEX[index.max(256)], context, writer)?;
+                item.render_section(INDEX[index.min(255)], context, writer)?;
             }
 
             Ok(())

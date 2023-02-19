@@ -26,17 +26,17 @@ fn main() {
     match pistachio.get("hello-world") {
         Err(err) => println!("{}", err),
         Ok(template) => {
-            println!("----------");
-            println!("{:#?}", template);
-            println!("----------");
-            println!("{}", template.source());
-            println!("----------");
+            // println!("----------");
+            // println!("{:#?}", template);
+            // println!("----------");
+            // println!("{}", template.source());
+            // println!("----------");
             let vars = json!({
                 "title": "this is a title",
                 "steve": "my man",
                 "body": { "content": "wizzle" },
                 "list": [
-                    {"item": {"name": "foo", "age": 23 }},
+                    {"item": {"name": "foo", "age": { "seconds": 230000 } }},
                     {"item": {"name": "bar", "age": 70 }},
                     {"item": {"name": "baz", "age": 39 }},
                 ],
@@ -44,15 +44,15 @@ fn main() {
             let html = template.render(&vars);
             println!("{:#?}", vars);
             println!("{:?}", html);
-            println!("----------");
-            let vars = Vars {
-                title: "this is a title",
-                steve: "my man",
-            };
-            let html = template.render(&vars);
-            println!("{:#?}", vars);
-            println!("{:?}", html);
-            println!("----------");
+            // println!("----------");
+            // let vars = Vars {
+            //     title: "this is a title",
+            //     steve: "my man",
+            // };
+            // let html = template.render(&vars);
+            // println!("{:#?}", vars);
+            // println!("{:?}", html);
+            // println!("----------");
         },
     }
 }

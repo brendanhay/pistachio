@@ -201,9 +201,7 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
                 S: ::pistachio::render::RenderStack,
                 W: ::pistachio::render::Writer,
             {
-                let frame = ::pistachio::render::stack::Frame { name: key, data: self };
-
-                context.push(&frame).render(writer)
+                context.push(key, self).render(writer)
             }
 
             #[inline]

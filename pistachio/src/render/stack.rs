@@ -1,3 +1,8 @@
+use std::{
+    convert,
+    iter,
+};
+
 use super::{
     Context,
     Escape,
@@ -6,6 +11,35 @@ use super::{
     Writer,
 };
 use crate::Template;
+
+pub struct Frame<'a, X> {
+    pub name: &'a str,
+    pub data: &'a X,
+}
+
+impl<X> Copy for Frame<'_, X> {}
+
+impl<X> Clone for Frame<'_, X> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+pub trait Trace {
+    fn trace(&self) -> Option<&str>;
+}
+
+impl Trace for () {
+    fn trace(&self) -> Option<&str> {
+        None
+    }
+}
+
+impl<T> Trace for Frame<'_, T> {
+    fn trace(&self) -> Option<&str> {
+        Some(self.name)
+    }
+}
 
 pub trait Stack: Sized + Copy {
     type I: Sized + Copy + Render + Trace;
@@ -16,10 +50,7 @@ pub trait Stack: Sized + Copy {
 
     type Previous: RenderStack;
 
-    fn push<X: ?Sized + Render>(
-        self,
-        frame: &X,
-    ) -> (Self::I, Self::J, Self::K, Self::L, Self::M, &X);
+    fn push<X: Render>(self, frame: X) -> (Self::I, Self::J, Self::K, Self::L, Self::M, X);
 
     fn pop(self) -> Self::Previous;
 
@@ -45,7 +76,7 @@ impl Stack for () {
     type Previous = ();
 
     #[inline]
-    fn push<X: ?Sized>(self, frame: &X) -> ((), (), (), (), (), &X) {
+    fn push<X>(self, frame: X) -> ((), (), (), (), (), X) {
         ((), (), (), (), (), frame)
     }
 
@@ -76,7 +107,7 @@ where
     type Previous = ((), A, B, C, D, E);
 
     #[inline]
-    fn push<X: ?Sized + Render>(self, frame: &X) -> (B, C, D, E, F, &X) {
+    fn push<X: Render>(self, frame: X) -> (B, C, D, E, F, X) {
         (self.1, self.2, self.3, self.4, self.5, frame)
     }
 
@@ -87,14 +118,15 @@ where
 
     #[inline]
     fn trace(&self) -> Vec<&str> {
-        let mut trace = Vec::with_capacity(6);
-        trace.push(self.0.trace());
-        trace.push(self.1.trace());
-        trace.push(self.2.trace());
-        trace.push(self.3.trace());
-        trace.push(self.4.trace());
-        trace.push(self.5.trace());
-        trace
+        self.0
+            .trace()
+            .into_iter()
+            .chain(self.1.trace().into_iter())
+            .chain(self.2.trace().into_iter())
+            .chain(self.3.trace().into_iter())
+            .chain(self.4.trace().into_iter())
+            .chain(self.5.trace().into_iter())
+            .collect()
     }
 }
 
@@ -222,28 +254,6 @@ where
         }
 
         Ok(())
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct Frame<'a, T> {
-    pub name: &'a str,
-    pub data: &'a T,
-}
-
-pub trait Trace {
-    fn trace(&self) -> &str;
-}
-
-impl Trace for () {
-    fn trace(&self) -> &str {
-        ""
-    }
-}
-
-impl<T> Trace for Frame<'_, T> {
-    fn trace(&self) -> &str {
-        self.name
     }
 }
 

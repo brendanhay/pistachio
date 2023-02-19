@@ -37,12 +37,7 @@ macro_rules! impl_map {
             W: Writer,
         {
             if self.is_truthy() {
-                let frame = stack::Frame {
-                    name: key,
-                    data: self,
-                };
-
-                context.push(&frame).render(writer)
+                context.push(key, self).render(writer)
             } else {
                 Ok(())
             }

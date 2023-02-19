@@ -93,11 +93,9 @@ impl<'a> Template<'a> {
         data: &S,
         buffer: &mut String,
     ) -> Result<(), RenderError<Infallible>> {
-        let frame = stack::Frame { name: ".", data };
-
         // Writing to a String is Infallible
         Context::new(self.raise, &self.nodes)
-            .push(&frame)
+            .push("", &data)
             .render(buffer)
     }
 
@@ -110,10 +108,9 @@ impl<'a> Template<'a> {
         S: Render,
         W: io::Write,
     {
-        let frame = stack::Frame { name: ".", data };
         let mut writer = EscapedWriter::new(writer);
         let () = Context::new(self.raise, &self.nodes)
-            .push(&frame)
+            .push("", &data)
             .render(&mut writer)?;
 
         Ok(())
