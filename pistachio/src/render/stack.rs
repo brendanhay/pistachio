@@ -8,17 +8,17 @@ use super::{
 use crate::Template;
 
 pub trait Stack: Sized + Copy {
-    type I: Sized + Copy + Render;
-    type J: Sized + Copy + Render;
-    type K: Sized + Copy + Render;
-    type L: Sized + Copy + Render;
-    type M: Sized + Copy + Render;
+    type I: Sized + Copy + Render + Trace;
+    type J: Sized + Copy + Render + Trace;
+    type K: Sized + Copy + Render + Trace;
+    type L: Sized + Copy + Render + Trace;
+    type M: Sized + Copy + Render + Trace;
 
     type Previous: RenderStack;
 
     fn push<X: ?Sized + Render>(
         self,
-        frame: X,
+        frame: &X,
     ) -> (Self::I, Self::J, Self::K, Self::L, Self::M, &X);
 
     fn pop(self) -> Self::Previous;
@@ -233,6 +233,18 @@ pub struct Frame<'a, T> {
 
 pub trait Trace {
     fn trace(&self) -> &str;
+}
+
+impl Trace for () {
+    fn trace(&self) -> &str {
+        ""
+    }
+}
+
+impl<T> Trace for Frame<'_, T> {
+    fn trace(&self) -> &str {
+        self.name
+    }
 }
 
 impl<'a, T: Render> Render for Frame<'a, T> {
