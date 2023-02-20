@@ -5,10 +5,8 @@ use std::{
 
 use super::{
     stack::{
-        Frame,
         PushStack,
         RenderStack,
-        Trace,
     },
     writer::Writer,
     Escape,
@@ -44,13 +42,13 @@ where
     S: RenderStack,
 {
     #[inline]
-    pub fn push<X>(self, name: &'a str, data: &'a X) -> Context<'a, PushStack<S, Frame<'a, X>>>
+    pub fn push<X>(self, frame: &X) -> Context<'a, PushStack<S, &X>>
     where
-        X: Render,
+        X: ?Sized + Render,
     {
         Context {
             raise: self.raise,
-            stack: self.stack.push(Frame { name, data }),
+            stack: self.stack.push(frame),
             nodes: self.nodes,
         }
     }
@@ -86,11 +84,7 @@ where
                         .render_stack_escape(node.key, Escape::Html, writer)?;
 
                     if !found && self.raise {
-                        let mut trace = self.stack.trace();
-                        trace.push(node.key);
-                        let trace = trace.join(".").into();
-
-                        return Err(RenderError::MissingVariable(trace));
+                        return Err(RenderError::MissingVariable(node.start, node.key.into()));
                     }
                 },
 
@@ -100,16 +94,12 @@ where
                         .render_stack_escape(node.key, Escape::None, writer)?;
 
                     if !found && self.raise {
-                        let mut trace = self.stack.trace();
-                        trace.push(node.key);
-                        let trace = trace.join(".").into();
-
-                        return Err(RenderError::MissingVariable(trace));
+                        return Err(RenderError::MissingVariable(node.start, node.key.into()));
                     }
                 },
 
                 Tag::Section => {
-                    let children = node.len;
+                    let children = node.children;
                     self.stack.render_stack_section(
                         node.key,
                         self.children(index..index + children),
@@ -120,7 +110,7 @@ where
                 },
 
                 Tag::Inverted => {
-                    let children = node.len;
+                    let children = node.children;
                     self.stack.render_stack_inverted_section(
                         node.key,
                         self.children(index..index + children),
@@ -137,7 +127,7 @@ where
                 Tag::Partial => {},
 
                 Tag::Content => {
-                    writer.write_escape(node.raw, Escape::None)?;
+                    writer.write_escape(node.text, Escape::None)?;
                 },
             }
         }

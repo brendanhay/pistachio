@@ -1,6 +1,13 @@
 #![feature(pattern)]
 #![warn(clippy::disallowed_types)]
 
+#[cfg(test)]
+#[macro_use]
+extern crate quickcheck;
+#[cfg(test)]
+#[macro_use(quickcheck)]
+extern crate quickcheck_macros;
+
 use std::{
     borrow::Cow,
     collections::hash_map::Entry,
@@ -181,7 +188,6 @@ impl<'a> Loader<'a> for LoadingDisabled {
         Err(Error::LoadingDisabled)
     }
 }
-
 impl Loader<'static> for Pistachio {
     fn get_template(&mut self, name: &'static str) -> Result<&Template<'static>, Error> {
         if !self.templates.contains_key(name) {

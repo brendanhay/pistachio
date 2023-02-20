@@ -16,15 +16,18 @@ pub type Parser = grammar::parser::MustacheParser;
 
 // XXX: doesn't consider custom delimiters
 macro_rules! balanced {
-    ($predicate:expr, $open:expr, $path:expr) => {
-        if !$predicate {
-            return Err(crate::parser::ParseError::User {
+    ($token:literal, $open:expr, $close:expr, $action:expr) => {
+        if $open == $close {
+            $action
+        } else {
+            Err(crate::parser::ParseError::User {
                 error: crate::error::Error::Parser(Box::from(format!(
-                    "{{{{{open}{path}}}}} is missing the corresponding {{{{/{path}}}}} end tag",
+                    "{{{{{token}{open}}}}} is missing the corresponding {{{{/{close}}}}} close tag",
+                    token = $token,
                     open = $open,
-                    path = $path,
+                    close = $close,
                 ))),
-            });
+            })
         }
     };
 }

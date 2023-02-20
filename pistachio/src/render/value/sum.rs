@@ -40,7 +40,6 @@ impl<T: Render> Render for Option<T> {
     #[inline]
     fn render_section<S, W>(
         &self,
-        key: &str,
         context: Context<S>,
         writer: &mut W,
     ) -> Result<(), RenderError<W::Error>>
@@ -49,7 +48,7 @@ impl<T: Render> Render for Option<T> {
         W: Writer,
     {
         if let Some(item) = self {
-            item.render_section(key, context, writer)?;
+            item.render_section(context, writer)?;
         }
 
         Ok(())
@@ -86,7 +85,6 @@ impl<T: Render, E> Render for Result<T, E> {
     #[inline]
     fn render_section<S, W>(
         &self,
-        key: &str,
         context: Context<S>,
         writer: &mut W,
     ) -> Result<(), RenderError<W::Error>>
@@ -95,7 +93,7 @@ impl<T: Render, E> Render for Result<T, E> {
         W: Writer,
     {
         if let Ok(item) = self {
-            item.render_section(key, context, writer)?;
+            item.render_section(context, writer)?;
         }
 
         Ok(())

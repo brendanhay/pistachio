@@ -19,7 +19,7 @@ pub enum Error {
     Io(io::Error),
     Lexer(Box<str>),
     Parser(Box<str>),
-    Render(Box<str>),
+    Render(usize, Box<str>),
     ParsingFailed(ParseError<Box<str>, Box<Error>>),
     InvalidPartial(Box<str>),
     LoadingDisabled,
@@ -38,7 +38,7 @@ impl From<RenderError<io::Error>> for Error {
     fn from(err: RenderError<io::Error>) -> Self {
         match err {
             RenderError::WriteError(io) => Error::Io(io),
-            RenderError::MissingVariable(v) => Error::Render(v),
+            RenderError::MissingVariable(start, key) => Error::Render(start, key),
         }
     }
 }
@@ -60,7 +60,7 @@ impl fmt::Display for Error {
             Io(err) => err.fmt(f),
             Lexer(err) => err.fmt(f),
             Parser(err) => err.fmt(f),
-            Render(err) => err.fmt(f),
+            Render(start, key) => write!(f, "Missing variable `{}` at position {}", key, start),
             ParsingFailed(err) => err.fmt(f),
             LoadingDisabled => write!(f, "Partials are not allowed in the current context"),
             InvalidPartial(path) => path.fmt(f),

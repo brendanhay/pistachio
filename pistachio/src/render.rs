@@ -26,7 +26,7 @@ pub enum Escape {
 //     StringWriter: Infallible | MissingVariable
 #[derive(Debug)]
 pub enum RenderError<W> {
-    MissingVariable(Box<str>),
+    MissingVariable(usize, Box<str>),
     WriteError(W),
 }
 
@@ -59,7 +59,6 @@ pub trait Render {
     #[inline]
     fn render_section<S, W>(
         &self,
-        _key: &str,
         context: Context<S>,
         writer: &mut W,
     ) -> Result<(), RenderError<W::Error>>
@@ -77,7 +76,6 @@ pub trait Render {
     #[inline]
     fn render_inverted_section<S, W>(
         &self,
-        _key: &str,
         context: Context<S>,
         writer: &mut W,
     ) -> Result<(), RenderError<W::Error>>

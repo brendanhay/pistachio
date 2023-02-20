@@ -10,27 +10,17 @@ struct Vars<'a> {
     steve: &'a str,
 }
 
-use bitflags::bitflags;
-
-bitflags! {
-    struct RenderFlags: u32 {
-        const RAISE = 0b00000001;
-        const B = 0b00000010;
-        const C = 0b00000100;
-    }
-}
-
 fn main() {
     let mut pistachio = Pistachio::new("examples").unwrap();
 
     match pistachio.get("hello-world") {
         Err(err) => println!("{}", err),
         Ok(template) => {
-            // println!("----------");
-            // println!("{:#?}", template);
-            // println!("----------");
-            // println!("{}", template.source());
-            // println!("----------");
+            println!("----------");
+            println!("{:#?}", template);
+            println!("----------");
+            println!("{}", template.source());
+            println!("----------");
             let vars = json!({
                 "title": "this is a title",
                 "steve": "my man",

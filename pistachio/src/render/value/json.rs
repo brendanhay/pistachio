@@ -61,7 +61,6 @@ impl Render for Value {
     #[inline]
     fn render_section<S, W>(
         &self,
-        key: &str,
         context: Context<S>,
         writer: &mut W,
     ) -> Result<(), RenderError<W::Error>>
@@ -70,19 +69,18 @@ impl Render for Value {
         W: Writer,
     {
         match self {
-            Value::Null => ().render_section(key, context, writer),
-            Value::Bool(b) => b.render_section(key, context, writer),
-            Value::Number(n) => n.render_section(key, context, writer),
-            Value::String(s) => s.render_section(key, context, writer),
-            Value::Array(v) => v.render_section(key, context, writer),
-            Value::Object(m) => m.render_section(key, context, writer),
+            Value::Null => ().render_section(context, writer),
+            Value::Bool(b) => b.render_section(context, writer),
+            Value::Number(n) => n.render_section(context, writer),
+            Value::String(s) => s.render_section(context, writer),
+            Value::Array(v) => v.render_section(context, writer),
+            Value::Object(m) => m.render_section(context, writer),
         }
     }
 
     #[inline]
     fn render_inverted_section<S, W>(
         &self,
-        key: &str,
         context: Context<S>,
         writer: &mut W,
     ) -> Result<(), RenderError<W::Error>>
@@ -91,12 +89,12 @@ impl Render for Value {
         W: Writer,
     {
         match self {
-            Value::Null => ().render_inverted_section(key, context, writer),
-            Value::Bool(b) => b.render_inverted_section(key, context, writer),
-            Value::Number(n) => n.render_inverted_section(key, context, writer),
-            Value::String(s) => s.render_inverted_section(key, context, writer),
-            Value::Array(v) => v.render_inverted_section(key, context, writer),
-            Value::Object(m) => m.render_inverted_section(key, context, writer),
+            Value::Null => ().render_inverted_section(context, writer),
+            Value::Bool(b) => b.render_inverted_section(context, writer),
+            Value::Number(n) => n.render_inverted_section(context, writer),
+            Value::String(s) => s.render_inverted_section(context, writer),
+            Value::Array(v) => v.render_inverted_section(context, writer),
+            Value::Object(m) => m.render_inverted_section(context, writer),
         }
     }
 

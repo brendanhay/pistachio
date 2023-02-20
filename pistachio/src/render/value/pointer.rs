@@ -39,7 +39,6 @@ macro_rules! impl_pointers {
                 #[inline]
                 fn render_section<S, W>(
                     &self,
-                    key: &str,
                     context: Context<S>,
                     writer: &mut W,
                 ) -> Result<(), RenderError<W::Error>>
@@ -47,13 +46,12 @@ macro_rules! impl_pointers {
                     S: RenderStack,
                     W: Writer,
                 {
-                    self.deref().render_section(key, context, writer)
+                    self.deref().render_section(context, writer)
                 }
 
                 #[inline]
                 fn render_inverted_section<S, W>(
                     &self,
-                    key: &str,
                     context: Context<S>,
                     writer: &mut W,
                 ) -> Result<(), RenderError<W::Error>>
@@ -61,7 +59,7 @@ macro_rules! impl_pointers {
                     S: RenderStack,
                     W: Writer,
                 {
-                    self.deref().render_inverted_section(key, context, writer)
+                    self.deref().render_inverted_section(context, writer)
                 }
 
                 #[inline]

@@ -11,7 +11,6 @@ use crate::{
     map,
     parser::Parser,
     render::{
-        stack,
         Context,
         EscapedWriter,
         Render,
@@ -95,7 +94,7 @@ impl<'a> Template<'a> {
     ) -> Result<(), RenderError<Infallible>> {
         // Writing to a String is Infallible
         Context::new(self.raise, &self.nodes)
-            .push("", &data)
+            .push(&data)
             .render(buffer)
     }
 
@@ -110,7 +109,7 @@ impl<'a> Template<'a> {
     {
         let mut writer = EscapedWriter::new(writer);
         let () = Context::new(self.raise, &self.nodes)
-            .push("", &data)
+            .push(&data)
             .render(&mut writer)?;
 
         Ok(())
@@ -126,7 +125,7 @@ impl<'a> Template<'a> {
             .iter()
             .enumerate()
             .filter_map(|(i, node)| match node.tag {
-                Tag::Block => Some((node.key, (i, node.len))),
+                Tag::Block => Some((node.key, (i, node.children))),
                 _ => None,
             })
             .collect();
@@ -149,6 +148,53 @@ impl<'a> Template<'a> {
         }
 
         buffer
+    }
+}
+
+// #[test]
+// fn node_data() {
+//     let key = Key { start: 592, ident: "foo" };
+//     let children = 3;
+//     let node = Node::new(Tag::Section, key, "", children)
+
+// }
+
+/// A node of the template abstract syntax tree.
+/// Named as such to avoid confusion with the mustache `{{$block}}` tag.
+#[derive(Debug, Clone, Copy)]
+pub struct Node<'a> {
+    pub tag: Tag,
+    pub start: usize,
+    pub key: &'a str,
+    pub text: &'a str,
+    pub children: usize,
+}
+
+impl<'a> Node<'a> {
+    fn new(tag: Tag, key: Key<'a>, text: &'a str, children: usize) -> Self {
+        Self {
+            tag,
+            start: key.start,
+            key: key.ident,
+            text,
+            children,
+        }
+    }
+
+    pub fn content(start: usize, text: &'a str) -> Self {
+        Node {
+            tag: Tag::Content,
+            start,
+            key: "",
+            text,
+            children: 0,
+        }
+    }
+
+    pub fn block(key: Key<'a>, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
+        iter::once(Node::new(Tag::Block, key, "", nodes.len()))
+            .chain(nodes)
+            .collect()
     }
 }
 
@@ -179,64 +225,67 @@ pub enum Tag {
     Content,
 }
 
+/// The `Key` grammar production rule representing a single identifier with no dots.
 #[derive(Debug, Clone, Copy)]
-pub struct Node<'a> {
-    pub tag: Tag,
-    pub key: &'a str,
-    pub raw: &'a str,
-    pub len: usize,
-}
-
-impl<'a> Node<'a> {
-    pub fn content(text: &'a str) -> Self {
-        Node {
-            tag: Tag::Content,
-            key: "",
-            raw: text,
-            len: 0,
-        }
-    }
-
-    pub fn block(name: &'a str, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
-        iter::once(Node {
-            tag: Tag::Block,
-            key: name,
-            raw: "",
-            len: nodes.len(),
-        })
-        .chain(nodes)
-        .collect()
-    }
-}
-
-/// The grammar production `Key` representing a non-empty list of dotted
-/// keys such as `foo.bar.baz`.
-#[derive(Debug)]
 pub struct Key<'a> {
-    // Invariant: dots.len() > 0, which the grammar guarantees.
-    //
-    // This is more convenient for equality/iterators than something like:
-    //   head: &'a str,
-    //   tail: Vec<&'a str>,
-    segments: Vec<&'a str>,
+    start: usize,
+    ident: &'a str,
 }
 
-impl fmt::Display for Key<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.segments.join("."))
+impl<'a> Key<'a> {
+    pub fn new(start: usize, ident: &'a str) -> Self {
+        Self { start, ident }
     }
 }
 
 impl PartialEq<str> for Key<'_> {
     fn eq(&self, other: &str) -> bool {
-        self.segments.iter().map(|s| *s).eq(other.split('.'))
+        self.ident == other
     }
 }
 
-impl<'a> Key<'a> {
-    pub fn new(head: &'a str, mut tail: Vec<&'a str>) -> Self {
-        tail.insert(0, head);
-        Self { segments: tail }
+impl fmt::Display for Key<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.ident)
+    }
+}
+
+/// The `Path` grammar production rule representing a non-empty list of dotted
+/// `Key`s such as `foo.bar.baz`.
+#[derive(Debug)]
+pub struct Path<'a> {
+    head: Key<'a>,
+    tail: Vec<Key<'a>>,
+}
+
+impl PartialEq<str> for Path<'_> {
+    fn eq(&self, other: &str) -> bool {
+        if self.head.ident == other {
+            true
+        } else {
+            iter::once(&self.head)
+                .chain(self.tail.iter())
+                .map(|key| (*key).ident)
+                .eq(other.split('.'))
+        }
+    }
+}
+
+impl fmt::Display for Path<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Since `Path` is crate internal, this is only used on error.
+        write!(f, "{}", self.head)?;
+        for key in &self.tail {
+            write!(f, ".{}", key)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a> Path<'a> {
+    pub fn new(head: Key<'a>, tail: Vec<Key<'a>>) -> Self {
+        Self { head, tail }
     }
 
     pub fn section(self, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
@@ -269,23 +318,20 @@ impl<'a> Key<'a> {
         target_tag: Tag,
         nodes: Option<Vec<Node<'a>>>,
     ) -> Vec<Node<'a>> {
-        let dots = self.segments.len() - 1;
+        let dots = self.tail.len();
         let children = nodes.as_ref().map(|n| n.len()).unwrap_or(0);
 
-        self.segments
-            .into_iter()
-            .enumerate()
-            .map(|(child, name)| {
-                let last = child == dots;
-                let tag = if last { target_tag } else { parent_tag };
-                let next = if last { children } else { dots - child };
+        println!("{:?} {:?} {:?}", self, parent_tag, target_tag);
 
-                Node {
-                    tag,
-                    key: name,
-                    raw: "",
-                    len: next,
-                }
+        iter::once(self.head)
+            .chain(self.tail.into_iter())
+            .enumerate()
+            .map(|(index, key)| {
+                let last = index == dots;
+                let tag = if last { target_tag } else { parent_tag };
+                let next = if last { children } else { dots - index };
+
+                Node::new(tag, key, "", next)
             })
             .chain(nodes.into_iter().flatten())
             .collect()
