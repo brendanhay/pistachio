@@ -1,4 +1,7 @@
-use std::convert::Infallible;
+use std::{
+    convert::Infallible,
+    io,
+};
 
 pub use self::context::Context;
 use self::context::Nodes;
@@ -34,7 +37,7 @@ impl<W> From<W> for RenderError<W> {
     }
 }
 
-pub trait Render<'a> {
+pub trait Render {
     #[inline]
     fn size_hint(&self, _template: &Template) -> usize {
         0
@@ -46,38 +49,40 @@ pub trait Render<'a> {
     }
 
     #[inline]
-    fn variable(&self, _escape: Escape, _context: &mut Context) -> Result<(), Infallible> {
+    fn variable(&self, _escape: Escape, _writer: &mut dyn io::Write) -> Result<(), Infallible> {
         Ok(())
     }
 
-    #[inline]
-    fn variable_key(
-        &self,
-        _key: &str,
-        _escape: Escape,
-        _context: &mut Context,
-    ) -> Result<bool, Infallible> {
-        Ok(false)
-    }
+    // #[inline]
+    // fn variable_key(
+    //     &self,
+    //     _key: &str,
+    //     _escape: Escape,
+    //     _context: &mut Context,
+    // ) -> Result<bool, Infallible> {
+    //     Ok(false)
+    // }
 
-    #[inline]
-    fn section(&self, context: &mut Context, nodes: Nodes) -> Result<(), Infallible> {
-        if self.is_truthy() {
-            context.push_render(&self as &dyn Render, nodes)
-        } else {
-            Ok(())
-        }
-    }
+    // #[inline]
+    // fn section(&mut self, context: &mut Context, nodes: Nodes) -> Result<(), Infallible> {
+    //     if self.is_truthy() {
+    //         let t = self as &dyn Render;
+    //         let _ = context.push_render(self, nodes)?;
+    //         Ok(())
+    //     } else {
+    //         Ok(())
+    //     }
+    // }
 
-    #[inline]
-    fn section_key(
-        &self,
-        _key: &str,
-        _context: &mut Context,
-        _nodes: Nodes,
-    ) -> Result<bool, Infallible> {
-        Ok(false)
-    }
+    // #[inline]
+    // fn section_key(
+    //     &self,
+    //     _key: &str,
+    //     _context: &mut Context,
+    //     _nodes: Nodes,
+    // ) -> Result<bool, Infallible> {
+    //     Ok(false)
+    // }
 
     // #[inline]
     // fn inverted_section(&self, context: &mut Context) -> Result<(), Infallible>;
@@ -89,13 +94,13 @@ pub trait Render<'a> {
     // // }
     // // }
 
-    #[inline]
-    fn inverted_section_key(
-        &self,
-        _key: &str,
-        _context: &mut Context,
-        _nodes: Nodes,
-    ) -> Result<bool, Infallible> {
-        Ok(false)
-    }
+    // #[inline]
+    // fn inverted_section_key(
+    //     &self,
+    //     _key: &str,
+    //     _context: &mut Context,
+    //     _nodes: Nodes,
+    // ) -> Result<bool, Infallible> {
+    //     Ok(false)
+    // }
 }

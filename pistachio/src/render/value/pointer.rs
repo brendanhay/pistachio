@@ -19,7 +19,7 @@ use crate::{
 macro_rules! impl_pointers {
     ($( $ty:ty $(: $bounds:ident)? ),*) => {
         $(
-            impl<'a, T: Render<'a> $(+ $bounds)? + ?Sized> Render<'a> for $ty {
+            impl<T: Render $(+ $bounds)? + ?Sized> Render for $ty {
                 #[inline]
                 fn size_hint(&self, template: &Template) -> usize {
                     self.deref().size_hint(template)

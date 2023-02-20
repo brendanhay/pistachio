@@ -8,16 +8,16 @@ use crate::Render;
 
 #[derive(Clone, Copy)]
 pub struct Stack<'a> {
-    a: &'a dyn Render<'a>,
-    b: &'a dyn Render<'a>,
-    c: &'a dyn Render<'a>,
-    d: &'a dyn Render<'a>,
-    e: &'a dyn Render<'a>,
-    f: &'a dyn Render<'a>,
-    // g: &'a dyn Render<'a>,
-    // h: &'a dyn Render<'a>,
-    // i: &'a dyn Render<'a>,
-    // j: &'a dyn Render<'a>,
+    a: &'a dyn Render,
+    b: &'a dyn Render,
+    c: &'a dyn Render,
+    d: &'a dyn Render,
+    e: &'a dyn Render,
+    f: &'a dyn Render,
+    // g: &'a dyn Render,
+    // h: &'a dyn Render,
+    // i: &'a dyn Render,
+    // j: &'a dyn Render,
 }
 
 impl<'a> Stack<'a> {
@@ -38,7 +38,7 @@ impl<'a> Stack<'a> {
     }
 
     #[inline]
-    pub fn push(&mut self, frame: &'a dyn Render<'a>) {
+    pub fn push(&mut self, frame: &'a dyn Render) {
         self.a = frame;
         self.b = self.a;
         self.c = self.b;
@@ -52,7 +52,8 @@ impl<'a> Stack<'a> {
     }
 
     #[inline]
-    pub fn pop(&mut self) {
+    pub fn pop(&mut self) -> &'a dyn Render {
+        let ok = self.a;
         self.a = self.b;
         self.b = self.c;
         self.c = self.d;
@@ -64,6 +65,8 @@ impl<'a> Stack<'a> {
         // self.h = self.i;
         // self.i = self.j;
         // self.j = &();
+
+        ok
     }
 
     #[inline]
@@ -92,9 +95,9 @@ impl<'a> Stack<'a> {
     //     key: &str,
     //     context: Context<'a, S>,
     //     writer: &mut W,
-    // ) -> Result<(), Render<'a>Error<W::Error>>
+    // ) -> Result<(), RenderError<W::Error>>
     // where
-    //     S: Render<'a>Stack,
+    //     S: RenderStack,
     //     W: Writer,
     // {
     //     if !self.a.field_section(key, context, writer)? {
@@ -123,9 +126,9 @@ impl<'a> Stack<'a> {
     //     key: &str,
     //     context: Context<'a, S>,
     //     writer: &mut W,
-    // ) -> Result<(), Render<'a>Error<W::Error>>
+    // ) -> Result<(), RenderError<W::Error>>
     // where
-    //     S: Render<'a>Stack,
+    //     S: RenderStack,
     //     W: Writer,
     // {
     //     if !self.a.field_inverted_section(key, context, writer)?

@@ -25,7 +25,7 @@ use crate::template::{
 /// and the applicable sub-tree of nodes.
 pub struct Context<'a> {
     raise: bool,
-    stack: Stack<'a>,
+    stack: Vec<&'a dyn Render>,
     trace: Vec<&'a str>,
     write: &'a mut dyn io::Write,
 }
@@ -36,15 +36,15 @@ pub struct Nodes<'a> {
 
 impl<'a> Context<'a> {
     pub fn push_render(
-        &mut self,
+        &'a mut self,
         // _label: &'a str,
-        frame: &'a dyn Render<'a>,
-        nodes: Nodes<'a>,
+        frame: &'a dyn Render,
+        nodes: Nodes<'_>,
     ) -> Result<(), Infallible> {
         self.stack.push(frame); // (label, frame));
-        let result = self.render_nodes(nodes);
-        self.stack.pop();
-        result
+        let () = self.render_nodes(nodes)?;
+        let _ = self.stack.pop();
+        Ok(())
     }
 
     pub fn write(&mut self, escape: Escape, string: &str) -> Result<(), Infallible> {
@@ -53,7 +53,7 @@ impl<'a> Context<'a> {
         Ok(())
     }
 
-    fn render_nodes(&mut self, nodes: Nodes<'a>) -> Result<(), Infallible> {
+    fn render_nodes(&mut self, nodes: Nodes<'_>) -> Result<(), Infallible> {
         let mut index = 0;
 
         while let Some(node) = nodes.slice.get(index) {
@@ -61,11 +61,15 @@ impl<'a> Context<'a> {
 
             match node.tag {
                 Tag::Escaped => {
-                    let stack = self.stack;
-                    let found = stack.variable_key(node.key, Escape::Html, self)?;
-                    if !found && self.raise {
-                        return Ok(()); // Err(RenderError::MissingVariable(node.start, node.key.into()));
-                    }
+                    // let len = self.stack.len();
+                    // for frame in len..0 {
+                    //     let boxed = self.stack[frame].as_ref();
+                    //     let _found = boxed.variable_key(node.key, Escape::Html, self)?;
+                    // }
+
+                    // if !found && self.raise {
+                    //     return Ok(()); // Err(RenderError::MissingVariable(node.start, node.key.into()));
+                    // }
                 },
 
                 // Tag::Unescaped => {

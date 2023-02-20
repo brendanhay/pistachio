@@ -9,14 +9,14 @@ use crate::{
     Template,
 };
 
-impl Render<'_> for () {
+impl Render for () {
     #[inline]
     fn is_truthy(&self) -> bool {
         false
     }
 }
 
-impl Render<'_> for String {
+impl Render for String {
     #[inline]
     fn size_hint(&self, _template: &Template) -> usize {
         self.len()
@@ -33,7 +33,7 @@ impl Render<'_> for String {
     }
 }
 
-impl Render<'_> for str {
+impl Render for str {
     #[inline]
     fn size_hint(&self, _template: &Template) -> usize {
         self.len()
