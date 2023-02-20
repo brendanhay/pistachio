@@ -21,8 +21,9 @@ quickcheck = "1"
 quickcheck_macros = "1"
 
 [features]
-default = ["ahash", "macros", "serde_json"]
+default = ["ahash", "macros", "serde_json", "trace"]
 
 ahash = ["dep:ahash"]
 macros = ["dep:pistachio-macros"]
 serde_json = ["dep:serde_json"]
+trace = []

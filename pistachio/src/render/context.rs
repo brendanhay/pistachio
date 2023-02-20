@@ -20,7 +20,6 @@ use crate::template::{
 
 /// The current mustache context containing the execution stack
 /// and the applicable sub-tree of nodes.
-#[derive(Clone, Copy)]
 pub struct Context<'a, S: RenderStack> {
     raise: bool,
     stack: S,

@@ -13,6 +13,7 @@ mod context;
 mod writer;
 
 pub mod stack;
+mod trace;
 pub(crate) mod value;
 
 #[derive(Debug, Clone, Copy)]
