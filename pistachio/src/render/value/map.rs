@@ -25,22 +25,22 @@ macro_rules! impl_map {
             !self.is_empty()
         }
 
-        #[inline]
-        fn render_section<S, W>(
-            &self,
-            context: Context<S>,
-            writer: &mut W,
-        ) -> Result<(), RenderError<W::Error>>
-        where
-            S: stack::RenderStack,
-            W: Writer,
-        {
-            if self.is_truthy() {
-                context.push(self).render(writer)
-            } else {
-                Ok(())
-            }
-        }
+        // #[inline]
+        // fn render_section<S, W>(
+        //     &self,
+        //     context: Context<S>,
+        //     writer: &mut W,
+        // ) -> Result<(), RenderError<W::Error>>
+        // where
+        //     S: stack::RenderStack,
+        //     W: Writer,
+        // {
+        //     if self.is_truthy() {
+        //         context.push(self).render(writer)
+        //     } else {
+        //         Ok(())
+        //     }
+        // }
 
         #[inline]
         fn render_field_escape<W>(

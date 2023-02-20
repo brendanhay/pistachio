@@ -14,17 +14,15 @@ macro_rules! impl_sequence {
         }
 
         #[inline]
-        fn render_section<S, W>(
-            &self,
-            context: Context<S>,
-            writer: &mut W,
-        ) -> Result<(), RenderError<W::Error>>
+        fn render_section<S, W>(&self, context: &mut Context) -> Result<(), RenderError<W::Error>>
         where
             S: RenderStack,
             W: Writer,
         {
             for item in self.iter() {
-                item.render_section(context, writer)?;
+                if item.is_truthy() {
+                    context.render("0", item)?;
+                }
             }
 
             Ok(())

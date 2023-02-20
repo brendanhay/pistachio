@@ -136,12 +136,12 @@ where
         escape: Escape,
         writer: &mut W,
     ) -> Result<bool, RenderError<W::Error>> {
-        if self.5.render_field_escape(key, escape, writer)?
-            || self.4.render_field_escape(key, escape, writer)?
-            || self.3.render_field_escape(key, escape, writer)?
-            || self.2.render_field_escape(key, escape, writer)?
-            || self.1.render_field_escape(key, escape, writer)?
-            || self.0.render_field_escape(key, escape, writer)?
+        if self.5.field_variable(key, escape, writer)?
+            || self.4.field_variable(key, escape, writer)?
+            || self.3.field_variable(key, escape, writer)?
+            || self.2.field_variable(key, escape, writer)?
+            || self.1.field_variable(key, escape, writer)?
+            || self.0.field_variable(key, escape, writer)?
         {
             Ok(true)
         } else {
@@ -160,17 +160,17 @@ where
         S: RenderStack,
         W: Writer,
     {
-        if !self.5.render_field_section(key, context, writer)? {
+        if !self.5.field_section(key, context, writer)? {
             let context = context.pop();
-            if !self.4.render_field_section(key, context, writer)? {
+            if !self.4.field_section(key, context, writer)? {
                 let context = context.pop();
-                if !self.3.render_field_section(key, context, writer)? {
+                if !self.3.field_section(key, context, writer)? {
                     let context = context.pop();
-                    if !self.2.render_field_section(key, context, writer)? {
+                    if !self.2.field_section(key, context, writer)? {
                         let context = context.pop();
-                        if !self.1.render_field_section(key, context, writer)? {
+                        if !self.1.field_section(key, context, writer)? {
                             let context = context.pop();
-                            self.0.render_field_section(key, context, writer)?;
+                            self.0.field_section(key, context, writer)?;
                         }
                     }
                 }
@@ -191,12 +191,12 @@ where
         S: RenderStack,
         W: Writer,
     {
-        if !self.5.render_field_inverted_section(key, context, writer)?
-            && !self.4.render_field_inverted_section(key, context, writer)?
-            && !self.3.render_field_inverted_section(key, context, writer)?
-            && !self.2.render_field_inverted_section(key, context, writer)?
-            && !self.1.render_field_inverted_section(key, context, writer)?
-            && !self.0.render_field_inverted_section(key, context, writer)?
+        if !self.5.field_inverted_section(key, context, writer)?
+            && !self.4.field_inverted_section(key, context, writer)?
+            && !self.3.field_inverted_section(key, context, writer)?
+            && !self.2.field_inverted_section(key, context, writer)?
+            && !self.1.field_inverted_section(key, context, writer)?
+            && !self.0.field_inverted_section(key, context, writer)?
         {
             context.render(writer)?;
         }

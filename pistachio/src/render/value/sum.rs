@@ -25,20 +25,20 @@ impl<T: Render> Render for Option<T> {
     }
 
     #[inline]
-    fn render_escape<W: Writer>(
+    fn variable<W: Writer>(
         &self,
         escape: Escape,
         writer: &mut W,
     ) -> Result<(), RenderError<W::Error>> {
         if let Some(inner) = self {
-            inner.render_escape(escape, writer)?;
+            inner.variable(escape, writer)?;
         }
 
         Ok(())
     }
 
     #[inline]
-    fn render_section<S, W>(
+    fn section<S, W>(
         &self,
         context: Context<S>,
         writer: &mut W,
@@ -48,7 +48,7 @@ impl<T: Render> Render for Option<T> {
         W: Writer,
     {
         if let Some(item) = self {
-            item.render_section(context, writer)?;
+            item.section(context, writer)?;
         }
 
         Ok(())
@@ -70,20 +70,20 @@ impl<T: Render, E> Render for Result<T, E> {
     }
 
     #[inline]
-    fn render_escape<W: Writer>(
+    fn variable<W: Writer>(
         &self,
         escape: Escape,
         writer: &mut W,
     ) -> Result<(), RenderError<W::Error>> {
         if let Ok(inner) = self {
-            inner.render_escape(escape, writer)?;
+            inner.variable(escape, writer)?;
         }
 
         Ok(())
     }
 
     #[inline]
-    fn render_section<S, W>(
+    fn section<S, W>(
         &self,
         context: Context<S>,
         writer: &mut W,
@@ -93,7 +93,7 @@ impl<T: Render, E> Render for Result<T, E> {
         W: Writer,
     {
         if let Ok(item) = self {
-            item.render_section(context, writer)?;
+            item.section(context, writer)?;
         }
 
         Ok(())

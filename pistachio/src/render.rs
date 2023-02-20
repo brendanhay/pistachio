@@ -1,20 +1,17 @@
-pub use self::{
-    context::Context,
-    stack::RenderStack,
-    writer::{
-        EscapedString,
-        EscapedWriter,
-        Writer,
-    },
-};
+use std::convert::Infallible;
+
+pub use self::context::Context;
+use self::context::Nodes;
 use crate::template::Template;
 
 mod context;
+mod trace;
+mod value;
 mod writer;
 
-pub mod stack;
-mod trace;
-pub(crate) mod value;
+// pub mod stack;
+// mod trace;
+// pub(crate) mod value;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Escape {
@@ -37,95 +34,68 @@ impl<W> From<W> for RenderError<W> {
     }
 }
 
-pub trait Render {
-    #[inline]
-    fn is_truthy(&self) -> bool {
-        true
-    }
-
+pub trait Render<'a> {
     #[inline]
     fn size_hint(&self, _template: &Template) -> usize {
         0
     }
 
     #[inline]
-    fn render_escape<W: Writer>(
-        &self,
-        _escape: Escape,
-        _writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>> {
+    fn is_truthy(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn variable(&self, _escape: Escape, _context: &mut Context) -> Result<(), Infallible> {
         Ok(())
     }
 
     #[inline]
-    fn render_section<S, W>(
-        &self,
-        context: Context<S>,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
-        if self.is_truthy() {
-            context.render(writer)
-        } else {
-            Ok(())
-        }
-    }
-
-    #[inline]
-    fn render_inverted_section<S, W>(
-        &self,
-        context: Context<S>,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
-        if !self.is_truthy() {
-            context.render(writer)
-        } else {
-            Ok(())
-        }
-    }
-
-    #[inline]
-    fn render_field_escape<W: Writer>(
+    fn variable_key(
         &self,
         _key: &str,
         _escape: Escape,
-        _writer: &mut W,
-    ) -> Result<bool, RenderError<W::Error>> {
+        _context: &mut Context,
+    ) -> Result<bool, Infallible> {
         Ok(false)
     }
 
     #[inline]
-    fn render_field_section<S, W>(
-        &self,
-        _key: &str,
-        _context: Context<S>,
-        _writer: &mut W,
-    ) -> Result<bool, RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
-        Ok(false)
+    fn section(&self, context: &mut Context, nodes: Nodes) -> Result<(), Infallible> {
+        if self.is_truthy() {
+            context.push_render(&self as &dyn Render, nodes)
+        } else {
+            Ok(())
+        }
     }
 
     #[inline]
-    fn render_field_inverted_section<S, W>(
+    fn section_key(
         &self,
         _key: &str,
-        _context: Context<S>,
-        _writer: &mut W,
-    ) -> Result<bool, RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
+        _context: &mut Context,
+        _nodes: Nodes,
+    ) -> Result<bool, Infallible> {
+        Ok(false)
+    }
+
+    // #[inline]
+    // fn inverted_section(&self, context: &mut Context) -> Result<(), Infallible>;
+    // // {
+    // // if !self.is_truthy() {
+    // //     context.render()
+    // // } else {
+    // //     Ok(())
+    // // }
+    // // }
+
+    #[inline]
+    fn inverted_section_key(
+        &self,
+        _key: &str,
+        _context: &mut Context,
+        _nodes: Nodes,
+    ) -> Result<bool, Infallible> {
         Ok(false)
     }
 }
