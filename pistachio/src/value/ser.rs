@@ -1,4 +1,12 @@
-use std::io;
+use std::{
+    fmt,
+    io,
+};
+
+use serde::ser::{
+    Impossible,
+    Serialize,
+};
 
 use super::{
     to_value,
@@ -6,104 +14,10 @@ use super::{
     Number,
     Value,
 };
-
-// XXX: Define a sensible error type as a starting point - rather
-// than packing errors inside errors - just use nullary enums to indicate
-// the type of failure.
-//
-// serde_json uses line/column (of zero, or not) to indicate if a source
-// position should be indicated in the error message.
-//
-// The Debug impl is: "Error({:?}, line: {}, column: {})",
-//
-// Io
-// Value serialization errors
-// Parsing (+ Lexing) errors
-// Rendering errors
-// Partial/parent errors (not found, loading disabled)
-
-/// This type represents all possible errors that can occur when serializing or
-/// deserializing JSON data.
-pub struct Error {
-    /// This `Box` allows us to keep the size of `Error` as small as possible. A
-    /// larger `Error` type was substantially slower due to all the functions
-    /// that pass around `Result<T, Error>`.
-    err: Box<ErrorImpl>,
-}
-
-struct ErrorImpl {
-    code: ErrorCode,
-    line: usize,
-    column: usize,
-}
-
-pub enum ErrorCode {
-    /// Catchall for syntax error messages
-    Message(Box<str>),
-
-    /// Some IO error occurred while serializing or deserializing.
-    Io(io::Error),
-
-    /// EOF while parsing a list.
-    EofWhileParsingList,
-
-    /// EOF while parsing an object.
-    EofWhileParsingObject,
-
-    /// EOF while parsing a string.
-    EofWhileParsingString,
-
-    /// EOF while parsing a JSON value.
-    EofWhileParsingValue,
-
-    /// Expected this character to be a `':'`.
-    ExpectedColon,
-
-    /// Expected this character to be either a `','` or a `']'`.
-    ExpectedListCommaOrEnd,
-
-    /// Expected this character to be either a `','` or a `'}'`.
-    ExpectedObjectCommaOrEnd,
-
-    /// Expected to parse either a `true`, `false`, or a `null`.
-    ExpectedSomeIdent,
-
-    /// Expected this character to start a JSON value.
-    ExpectedSomeValue,
-
-    /// Invalid hex escape code.
-    InvalidEscape,
-
-    /// Invalid number.
-    InvalidNumber,
-
-    /// Number is bigger than the maximum value of its type.
-    NumberOutOfRange,
-
-    /// Invalid unicode code point.
-    InvalidUnicodeCodePoint,
-
-    /// Control character found while parsing a string.
-    ControlCharacterWhileParsingString,
-
-    /// Object key is not a string.
-    KeyMustBeAString,
-
-    /// Lone leading surrogate in hex escape.
-    LoneLeadingSurrogateInHexEscape,
-
-    /// JSON has a comma after the last value in an array or map.
-    TrailingComma,
-
-    /// JSON has non-whitespace trailing characters after the value.
-    TrailingCharacters,
-
-    /// Unexpected end of hex escape.
-    UnexpectedEndOfHexEscape,
-
-    /// Encountered nesting of JSON maps and arrays more than 128 layers deep.
-    RecursionLimitExceeded,
-}
+use crate::error::{
+    Error,
+    Result,
+};
 
 pub struct Serializer;
 
@@ -250,7 +164,7 @@ impl serde::Serializer for Serializer {
     where
         T: ?Sized + Serialize,
     {
-        let mut values = Map::new();
+        let mut values = Map::default();
         values.insert(String::from(variant), to_value(value)?);
         Ok(Value::Map(values))
     }
@@ -301,7 +215,7 @@ impl serde::Serializer for Serializer {
 
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
         Ok(SerializeMap::Map {
-            map: Map::new(),
+            map: Map::default(),
             next_key: None,
         })
     }
@@ -319,13 +233,13 @@ impl serde::Serializer for Serializer {
     ) -> Result<Self::SerializeStructVariant> {
         Ok(SerializeStructVariant {
             name: String::from(variant),
-            map: Map::new(),
+            map: Map::default(),
         })
     }
 
     fn collect_str<T>(self, value: &T) -> Result<Value>
     where
-        T: ?Sized + Display,
+        T: ?Sized + fmt::Display,
     {
         Ok(Value::String(value.to_string()))
     }
@@ -412,7 +326,7 @@ impl serde::ser::SerializeTupleVariant for SerializeTupleVariant {
     }
 
     fn end(self) -> Result<Value> {
-        let mut object = Map::new();
+        let mut object = Map::default();
 
         object.insert(self.name, Value::Vec(self.vec));
 
@@ -634,7 +548,7 @@ impl serde::Serializer for MapKeySerializer {
 
     fn collect_str<T>(self, value: &T) -> Result<String>
     where
-        T: ?Sized + Display,
+        T: ?Sized + fmt::Display,
     {
         Ok(value.to_string())
     }
@@ -673,10 +587,10 @@ impl serde::ser::SerializeStructVariant for SerializeStructVariant {
     }
 
     fn end(self) -> Result<Value> {
-        let mut object = Map::new();
+        let mut map = Map::default();
 
-        object.insert(self.name, Value::Map(self.map));
+        map.insert(self.name, Value::Map(self.map));
 
-        Ok(Value::Map(object))
+        Ok(Value::Map(map))
     }
 }

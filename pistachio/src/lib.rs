@@ -48,6 +48,7 @@
 // #[doc(hidden)]
 // pub mod render;
 
+mod error;
 mod value;
 
 // /// The caching strategy determining how templates are loaded.

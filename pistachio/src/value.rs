@@ -13,7 +13,6 @@ mod map;
 mod number;
 mod ser;
 
-#[derive(Copy, Clone, PartialEq)]
 pub enum Value {
     Null,
     Bool(bool),
@@ -21,7 +20,7 @@ pub enum Value {
     String(String),
     Vec(Vec<Value>),
     Map(Map<String, Value>),
-    Fun(Box<Fn(String) -> String + Send>),
+    Fun(Box<dyn Fn(String) -> String + Send>),
 }
 
 impl fmt::Debug for Value {
@@ -29,7 +28,7 @@ impl fmt::Debug for Value {
         match self {
             Value::Null => fmt.write_str("Null"),
             Value::Bool(boolean) => write!(fmt, "Bool({})", boolean),
-            Value::Number(number) => Debug::fmt(number, fmt),
+            Value::Number(number) => fmt::Debug::fmt(number, fmt),
             Value::String(string) => write!(fmt, "String({:?})", string),
             Value::Vec(vec) => {
                 fmt.write_str("Vec ")?;
