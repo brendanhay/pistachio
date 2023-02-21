@@ -52,6 +52,7 @@ pub enum Cache {
     None,
 }
 
+#[derive(Debug)]
 pub struct Builder {
     directory: PathBuf,
     extension: OsString,
@@ -61,6 +62,8 @@ pub struct Builder {
 
 impl Builder {
     pub fn build(self) -> Result<Pistachio, Error> {
+        println!("{:#?}", &self);
+
         Ok(Pistachio {
             directory: self.directory.canonicalize().map_err(Error::Io)?,
             extension: self.extension,
@@ -92,6 +95,7 @@ impl Builder {
 }
 
 /// Everybody loves `Pistachio`.
+#[derive(Debug)]
 pub struct Pistachio {
     directory: PathBuf,
     extension: OsString,
@@ -110,8 +114,8 @@ impl Pistachio {
     /// behaviour, see [`Builder::missing_is_false`].
     pub fn builder() -> Builder {
         Builder {
-            directory: ".".into(),
-            extension: ".mustache".into(),
+            directory: "examples".into(),
+            extension: "mustache".into(),
             cache: Cache::Name,
             raise: true,
         }
@@ -159,7 +163,7 @@ impl Pistachio {
             .map_err(Error::Io)?;
 
         if !path.starts_with(&self.directory) {
-            return Err(Error::InvalidPartial);
+            return Err(Error::InvalidPartial(Box::from(path.display().to_string())));
         }
 
         let source = fs::read_to_string(&path).map_err(Error::Io)?;

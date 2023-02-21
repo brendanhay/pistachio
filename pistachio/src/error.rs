@@ -10,9 +10,6 @@ use crate::parser::{
 
 #[derive(Debug)]
 pub enum Error {
-    /// Catchall for syntax error messages
-    Message(Box<str>),
-
     /// An IO error occurred while parsing or rendering.
     Io(io::Error),
 
@@ -23,7 +20,7 @@ pub enum Error {
     LoadingDisabled,
 
     /// An attempt to include a partial or parent failed.
-    InvalidPartial,
+    InvalidPartial(Box<str>),
 
     /// Tried to serialize a map key that was not a string.
     KeyMustBeAString,
@@ -35,11 +32,12 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Message(msg) => f.write_str(msg),
             Error::Io(err) => fmt::Display::fmt(err, f),
             Error::ParsingFailed(msg) => f.write_str(msg),
-            Error::LoadingDisabled => todo!(),
-            Error::InvalidPartial => todo!(),
+            Error::LoadingDisabled => {
+                f.write_str("loading templates from the filesystem is disabled")
+            },
+            Error::InvalidPartial(msg) => write!(f, "partial path {} is invalid", msg),
             Error::KeyMustBeAString => f.write_str("key must be a string"),
             Error::NumberOutOfRange => f.write_str("number out of range"),
         }
