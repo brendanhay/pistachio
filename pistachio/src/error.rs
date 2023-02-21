@@ -12,6 +12,74 @@ use crate::{
 
 // XXX: Tidy this up
 
+// pub(crate) enum ErrorCode {
+//     /// Catchall for syntax error messages
+//     Message(Box<str>),
+
+//     /// Some IO error occurred while serializing or deserializing.
+//     Io(io::Error),
+
+//     /// EOF while parsing a list.
+//     EofWhileParsingList,
+
+//     /// EOF while parsing an object.
+//     EofWhileParsingObject,
+
+//     /// EOF while parsing a string.
+//     EofWhileParsingString,
+
+//     /// EOF while parsing a JSON value.
+//     EofWhileParsingValue,
+
+//     /// Expected this character to be a `':'`.
+//     ExpectedColon,
+
+//     /// Expected this character to be either a `','` or a `']'`.
+//     ExpectedListCommaOrEnd,
+
+//     /// Expected this character to be either a `','` or a `'}'`.
+//     ExpectedObjectCommaOrEnd,
+
+//     /// Expected to parse either a `true`, `false`, or a `null`.
+//     ExpectedSomeIdent,
+
+//     /// Expected this character to start a JSON value.
+//     ExpectedSomeValue,
+
+//     /// Invalid hex escape code.
+//     InvalidEscape,
+
+//     /// Invalid number.
+//     InvalidNumber,
+
+//     /// Number is bigger than the maximum value of its type.
+//     NumberOutOfRange,
+
+//     /// Invalid unicode code point.
+//     InvalidUnicodeCodePoint,
+
+//     /// Control character found while parsing a string.
+//     ControlCharacterWhileParsingString,
+
+//     /// Object key is not a string.
+//     KeyMustBeAString,
+
+//     /// Lone leading surrogate in hex escape.
+//     LoneLeadingSurrogateInHexEscape,
+
+//     /// JSON has a comma after the last value in an array or map.
+//     TrailingComma,
+
+//     /// JSON has non-whitespace trailing characters after the value.
+//     TrailingCharacters,
+
+//     /// Unexpected end of hex escape.
+//     UnexpectedEndOfHexEscape,
+
+//     /// Encountered nesting of JSON maps and arrays more than 128 layers deep.
+//     RecursionLimitExceeded,
+// }
+
 /// Error type used that can be emitted during template parsing.
 #[derive(Debug)]
 pub enum Error {

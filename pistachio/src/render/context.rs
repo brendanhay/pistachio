@@ -13,9 +13,12 @@ use super::{
     Render,
     RenderError,
 };
-use crate::template::{
-    Node,
-    Tag,
+use crate::{
+    template::{
+        Node,
+        Tag,
+    },
+    value::Value,
 };
 
 /// The current mustache context containing the execution stack
@@ -36,101 +39,101 @@ impl<'a> Context<'a, ()> {
     }
 }
 
-impl<'a, S> Context<'a, S>
-where
-    S: RenderStack,
-{
-    #[inline]
-    pub fn push<X>(self, frame: &X) -> Context<'a, PushStack<S, &X>>
-    where
-        X: ?Sized + Render,
-    {
-        Context {
-            raise: self.raise,
-            stack: self.stack.push(frame),
-            nodes: self.nodes,
-        }
-    }
+// impl<'a, S> Context<'a, S>
+// where
+//     S: RenderStack,
+// {
+//     #[inline]
+//     pub fn push<X>(self, frame: &X) -> Context<'a, PushStack<S, &X>>
+//     where
+//         X: ?Sized + Render,
+//     {
+//         Context {
+//             raise: self.raise,
+//             stack: self.stack.push(frame),
+//             nodes: self.nodes,
+//         }
+//     }
 
-    #[inline]
-    pub fn pop(self) -> Context<'a, S::Previous> {
-        Context {
-            raise: self.raise,
-            stack: self.stack.pop(),
-            nodes: self.nodes,
-        }
-    }
+//     #[inline]
+//     pub fn pop(self) -> Context<'a, S::Previous> {
+//         Context {
+//             raise: self.raise,
+//             stack: self.stack.pop(),
+//             nodes: self.nodes,
+//         }
+//     }
 
-    #[inline]
-    fn children(self, range: Range<usize>) -> Self {
-        Context {
-            raise: self.raise,
-            stack: self.stack,
-            nodes: &self.nodes[range],
-        }
-    }
+//     #[inline]
+//     fn children(self, range: Range<usize>) -> Self {
+//         Context {
+//             raise: self.raise,
+//             stack: self.stack,
+//             nodes: &self.nodes[range],
+//         }
+//     }
 
-    pub fn render<W: Writer>(&self, writer: &mut W) -> Result<(), RenderError<W::Error>> {
-        let mut index = 0;
+//     pub fn render<W: Writer>(&self, writer: &mut W) -> Result<(), RenderError<W::Error>> {
+//         let mut index = 0;
 
-        while let Some(node) = self.nodes.get(index) {
-            index += 1;
+//         while let Some(node) = self.nodes.get(index) {
+//             index += 1;
 
-            match node.tag {
-                Tag::Escaped => {
-                    let found = self
-                        .stack
-                        .render_stack_escape(node.key, Escape::Html, writer)?;
+//             match node.tag {
+//                 Tag::Escaped => {
+//                     let found = self
+//                         .stack
+//                         .render_stack_escape(node.key, Escape::Html, writer)?;
 
-                    if !found && self.raise {
-                        return Err(RenderError::MissingVariable(node.start, node.key.into()));
-                    }
-                },
+//                     if !found && self.raise {
+//                         return Err(RenderError::MissingVariable(node.start, node.key.into()));
+//                     }
+//                 },
 
-                Tag::Unescaped => {
-                    let found = self
-                        .stack
-                        .render_stack_escape(node.key, Escape::None, writer)?;
+//                 Tag::Unescaped => {
+//                     let found = self
+//                         .stack
+//                         .render_stack_escape(node.key, Escape::None, writer)?;
 
-                    if !found && self.raise {
-                        return Err(RenderError::MissingVariable(node.start, node.key.into()));
-                    }
-                },
+//                     if !found && self.raise {
+//                         return Err(RenderError::MissingVariable(node.start, node.key.into()));
+//                     }
+//                 },
 
-                Tag::Section => {
-                    let children = node.children;
-                    self.stack.render_stack_section(
-                        node.key,
-                        self.children(index..index + children),
-                        writer,
-                    )?;
+//                 Tag::Section => {
+//                     let children = node.children;
+//                     self.stack.render_stack_section(
+//                         node.key,
+//                         self.children(index..index + children),
+//                         writer,
+//                     )?;
 
-                    index += children;
-                },
+//                     index += children;
+//                 },
 
-                Tag::Inverted => {
-                    let children = node.children;
-                    self.stack.render_stack_inverted_section(
-                        node.key,
-                        self.children(index..index + children),
-                        writer,
-                    )?;
+//                 Tag::Inverted => {
+//                     let children = node.children;
+//                     self.stack.render_stack_inverted_section(
+//                         node.key,
+//                         self.children(index..index + children),
+//                         writer,
+//                     )?;
 
-                    index += children;
-                },
+//                     index += children;
+//                 },
 
-                Tag::Block => {},
+//                 Tag::Block => {},
 
-                Tag::Parent => {},
+//                 Tag::Parent => {},
 
-                Tag::Partial => {},
+//                 Tag::Partial => {},
 
-                Tag::Content => {
-                    writer.write_escape(node.text, Escape::None)?;
-                },
-            }
-        }
+//                 Tag::Content => {
+//                     writer.write_escape(node.text, Escape::None)?;
+//                 },
+//             }
+//         }
 
-        Ok(())
-    }
-}
+//         Ok(())
+//     }
+// }
