@@ -5,6 +5,7 @@ use crate::{
         Context,
         Escape,
         Render,
+        Writer,
     },
     Template,
 };
@@ -28,8 +29,13 @@ impl Render for String {
     }
 
     #[inline]
-    fn variable(&self, escape: Escape, context: &mut Context) -> Result<(), Infallible> {
-        context.write(escape, self)
+    fn variable(
+        &self,
+        escape: Escape,
+        _context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Infallible> {
+        writer.write(escape, self)
     }
 }
 
@@ -45,30 +51,34 @@ impl Render for str {
     }
 
     #[inline]
-    fn variable(&self, escape: Escape, context: &mut Context) -> Result<(), Infallible> {
-        context.write(escape, self)
+    fn variable(
+        &self,
+        escape: Escape,
+        _context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Infallible> {
+        writer.write(escape, self)
     }
 }
 
-// impl Render for bool {
-//     #[inline]
-//     fn is_truthy(&self) -> bool {
-//         *self
-//     }
+impl Render for bool {
+    #[inline]
+    fn is_truthy(&self) -> bool {
+        *self
+    }
 
-//     #[inline]
-//     fn size_hint(&self, _template: &Template) -> usize {
-//         5
-//     }
+    #[inline]
+    fn size_hint(&self, _template: &Template) -> usize {
+        5
+    }
 
-//     #[inline]
-//     fn variable<W: Writer>(
-//         &self,
-//         escape: Escape,
-//         writer: &mut W,
-//     ) -> Result<(), RenderError<W::Error>> {
-//         writer
-//             .write_escape(if *self { "true" } else { "false" }, escape)
-//             .map_err(Into::into)
-//     }
-// }
+    #[inline]
+    fn variable(
+        &self,
+        escape: Escape,
+        _context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Infallible> {
+        writer.write(escape, if *self { "true" } else { "false" })
+    }
+}

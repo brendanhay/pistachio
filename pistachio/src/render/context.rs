@@ -3,10 +3,11 @@ use std::{
     convert::Infallible,
     fmt,
     io,
+    ops::Range,
+    rc::Rc,
 };
 
 use super::{
-    trace::Stack,
     // stack::{
     //     PushStack,
     //     RenderStack,
@@ -14,62 +15,77 @@ use super::{
     // writer::Writer,
     Escape,
     Render,
-    RenderError,
+    Section,
+    Stack,
+    Writer,
 };
-use crate::template::{
-    Node,
-    Tag,
+use crate::{
+    template::{
+        Node,
+        Tag,
+    },
+    Template,
 };
 
-/// The current mustache context containing the execution stack
-/// and the applicable sub-tree of nodes.
+/// The mustache context containing the execution stack and current sub-tree of nodes.
+#[derive(Clone, Copy)]
 pub struct Context<'a> {
+    stack: Stack<'a>,
+    nodes: &'a [Node<'a>],
     raise: bool,
-    stack: Vec<&'a dyn Render>,
-    trace: Vec<&'a str>,
-    write: &'a mut dyn io::Write,
-}
-
-pub struct Nodes<'a> {
-    slice: &'a [Node<'a>],
 }
 
 impl<'a> Context<'a> {
-    pub fn push_render(
-        &'a mut self,
-        // _label: &'a str,
-        frame: &'a dyn Render,
-        nodes: Nodes<'_>,
-    ) -> Result<(), Infallible> {
-        self.stack.push(frame); // (label, frame));
-        let () = self.render_nodes(nodes)?;
-        let _ = self.stack.pop();
-        Ok(())
+    pub fn new(self, raise: bool, nodes: &'a [Node<'a>]) -> Self {
+        Self {
+            stack: Stack::new(),
+            nodes,
+            raise,
+        }
     }
 
-    pub fn write(&mut self, escape: Escape, string: &str) -> Result<(), Infallible> {
-        let _ = self.write.write_all(string.as_bytes());
-
-        Ok(())
+    pub fn fork(self, nodes: &'a [Node<'a>]) -> Self {
+        Self { nodes, ..self }
     }
 
-    fn render_nodes(&mut self, nodes: Nodes<'_>) -> Result<(), Infallible> {
+    pub fn slice(self, range: Range<usize>) -> Self {
+        Self {
+            nodes: &self.nodes[range],
+            ..self
+        }
+    }
+
+    pub fn push(self, frame: &'a dyn Render) -> Self {
+        Self {
+            stack: self.stack.push(frame),
+            ..self
+        }
+    }
+
+    pub fn capture(self) -> Result<String, Infallible> {
+        let mut buffer: Vec<u8> = Vec::with_capacity(8);
+        let mut writer: Writer = Writer { inner: &mut buffer };
+
+        self.render(&mut writer)?;
+
+        Ok(unsafe {
+            // We do not emit invalid UTF-8.
+            String::from_utf8_unchecked(buffer)
+        })
+    }
+
+    pub fn render(self, writer: &mut Writer) -> Result<(), Infallible> {
         let mut index = 0;
 
-        while let Some(node) = nodes.slice.get(index) {
+        while let Some(node) = self.nodes.get(index) {
             index += 1;
 
             match node.tag {
                 Tag::Escaped => {
-                    // let len = self.stack.len();
-                    // for frame in len..0 {
-                    //     let boxed = self.stack[frame].as_ref();
-                    //     let _found = boxed.variable_key(node.key, Escape::Html, self)?;
-                    // }
-
-                    // if !found && self.raise {
-                    //     return Ok(()); // Err(RenderError::MissingVariable(node.start, node.key.into()));
-                    // }
+                    let found = self.stack.variable_key(node.key, self, writer)?;
+                    if !found && self.raise {
+                        return Ok(()); // Err(RenderError::MissingVariable(node.start, node.key.into()));
+                    }
                 },
 
                 // Tag::Unescaped => {

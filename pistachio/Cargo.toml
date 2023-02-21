@@ -9,9 +9,11 @@ readme = "../README.md"
 
 [dependencies]
 ahash = { version = "0.8", optional = true }
-lalrpop-util = { version = "0.19", default-features = false }
+lalrpop-util = { version = "0.19", features = [] }
 pistachio-macros = { version = "0.1", optional = true, path = "../pistachio-macros" }
-serde_json = { version = "1", optional = true, default-features = false, features = ["std"] }
+serde = "1.0.152"
+serde_closure = "0.3.3"
+serde_json = { version = "1", optional = true }
 
 [build-dependencies]
 lalrpop = { version = "0.19", default-features = false }

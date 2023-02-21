@@ -1,8 +1,11 @@
+use std::convert::Infallible;
+
 use crate::{
     render::{
+        Context,
         Escape,
         Render,
-        RenderError,
+        Section,
         Writer,
     },
     Template,
@@ -13,22 +16,23 @@ macro_rules! impl_numbers {
         $(
             impl Render for $ty {
                 #[inline]
-                fn is_truthy(&self) -> bool {
-                    *self != 0 as $ty
-                }
-
-                #[inline]
                 fn size_hint(&self, _template: &Template) -> usize {
                     5
                 }
 
                 #[inline]
-                fn render_escape<W: Writer>(
+                fn is_truthy(&self) -> bool {
+                    *self != 0 as $ty
+                }
+
+                #[inline]
+                fn variable(
                     &self,
                     _escape: Escape,
-                    writer: &mut W
-                ) -> Result<(), RenderError<W::Error>> {
-                    writer.format_escape(Escape::None, self).map_err(Into::into)
+                    _context: Context,
+                    writer: &mut Writer
+                ) -> Result<(), Infallible> {
+                    writer.write_format(Escape::None, self)
                 }
             }
         )*
@@ -43,22 +47,23 @@ macro_rules! impl_float {
         $(
             impl Render for $ty  {
                 #[inline]
-                fn is_truthy(&self) -> bool {
-                    self.abs() > $epsilon
-                }
-
-                #[inline]
                 fn size_hint(&self, _template: &Template) -> usize {
                     5
                 }
 
                 #[inline]
-                fn render_escape<W: Writer>(
+                fn is_truthy(&self) -> bool {
+                    self.abs() > $epsilon
+                }
+
+                #[inline]
+                fn variable(
                     &self,
                     _escape: Escape,
-                    writer: &mut W,
-                ) -> Result<(), RenderError<W::Error>> {
-                    writer.format_escape(Escape::None, self).map_err(Into::into)
+                    _context: Context,
+                    writer: &mut Writer
+                ) -> Result<(), Infallible> {
+                    writer.write_format(Escape::None, self)
                 }
             }
         )*

@@ -9,7 +9,7 @@
 use crate::{
     lexer::Token,
     parser::balanced,
-    template::{Key, Node, Path},
+    template::{Key, Node, Name},
     Error,
     Loader,
 };
@@ -65,17 +65,17 @@ Node: Vec<Node<'a>> = {
 }
 
 Section: Vec<Node<'a>> = {
-    "{{" "#" <path:Path> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!("#", &path, end, {
-            Ok(path.section(nodes))
+    "{{" "#" <name:Name> "}}" <nodes:Nodes> <end:Closing> =>? {
+        balanced!("#", &name, end, {
+            Ok(name.section(nodes))
         })
     },
 }
 
 Inverted: Vec<Node<'a>> = {
-    "{{" "^" <path:Path> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!("^", &path, end, {
-            Ok(path.inverted(nodes))
+    "{{" "^" <name:Name> "}}" <nodes:Nodes> <end:Closing> =>? {
+        balanced!("^", &name, end, {
+            Ok(name.inverted(nodes))
         })
     },
 }
@@ -89,9 +89,9 @@ Block: Vec<Node<'a>> = {
 }
 
 Parent: Vec<Node<'a>> = {
-    "{{" "<" "*" <path:Path> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!("<", &path, end, {
-            Ok(path.parent(nodes))
+    "{{" "<" "*" <name:Name> "}}" <nodes:Nodes> <end:Closing> =>? {
+        balanced!("<", &name, end, {
+            Ok(name.parent(nodes))
         })
     },
 
@@ -105,8 +105,8 @@ Parent: Vec<Node<'a>> = {
 }
 
 Partial: Vec<Node<'a>> = {
-    "{{" ">" "*" <path:Path> "}}" => {
-        path.partial()
+    "{{" ">" "*" <name:Name> "}}" => {
+        name.partial()
     },
 
     "{{" ">" <name:String> "}}" =>? {
@@ -121,8 +121,8 @@ Closing: &'a str = {
 }
 
 Variable: Vec<Node<'a>> = {
-    "{{" "&" <path:Path> "}}" => path.unescaped(),
-    "{{"     <path:Path> "}}" => path.escaped(),
+    "{{" "&" <name:Name> "}}" => name.unescaped(),
+    "{{"     <name:Name> "}}" => name.escaped(),
 }
 
 Comment: Option<Node<'a>> = {
@@ -136,13 +136,13 @@ Content: Node<'a> = {
     },
 }
 
-Path: Path<'a> = {
+Name: Name<'a> = {
     <head:Key> <tail:("." <Key>)*> => {
-        Path::new(head, tail)
+        Name::new(head, tail)
     },
 
     <start:@L> "." => {
-        Path::new(Key::new(start, "<reserved:dot>"), Vec::new())
+        Name::new(Key::new(start, "<reserved:dot>"), Vec::new())
     }
 }
 

@@ -4,6 +4,7 @@ use std::{
         BTreeMap,
         HashMap,
     },
+    convert::Infallible,
     hash::{
         BuildHasher,
         Hash,
@@ -11,83 +12,58 @@ use std::{
 };
 
 use crate::render::{
-    stack,
-    writer::Writer,
     Context,
     Escape,
     Render,
-    RenderError,
+    Section,
+    Writer,
 };
 
 macro_rules! impl_map {
     () => {
+        #[inline]
         fn is_truthy(&self) -> bool {
             !self.is_empty()
         }
 
-        // #[inline]
-        // fn render_section<S, W>(
-        //     &self,
-        //     context: Context<S>,
-        //     writer: &mut W,
-        // ) -> Result<(), RenderError<W::Error>>
-        // where
-        //     S: stack::RenderStack,
-        //     W: Writer,
-        // {
-        //     if self.is_truthy() {
-        //         context.push(self).render(writer)
-        //     } else {
-        //         Ok(())
-        //     }
-        // }
-
         #[inline]
-        fn render_field_escape<W>(
+        fn variable_key(
             &self,
             key: &str,
             escape: Escape,
-            writer: &mut W,
-        ) -> Result<bool, RenderError<W::Error>>
-        where
-            W: Writer,
-        {
+            context: Context,
+            writer: &mut Writer,
+        ) -> Result<bool, Infallible> {
             match self.get(key) {
-                Some(v) => v.render_escape(escape, writer).map(|_| true),
+                Some(v) => v.variable(escape, context, writer).map(|_| true),
                 None => Ok(false),
             }
         }
 
         #[inline]
-        fn render_field_section<S, W>(
+        fn section(
             &self,
-            key: &str,
-            context: Context<S>,
-            writer: &mut W,
-        ) -> Result<bool, RenderError<W::Error>>
-        where
-            S: stack::RenderStack,
-            W: Writer,
-        {
-            match self.get(key) {
-                Some(v) => v.render_section(context, writer).map(|_| true),
-                None => Ok(false),
+            section: Section,
+            context: Context,
+            writer: &mut Writer,
+        ) -> Result<(), Infallible> {
+            if self.section_is_truthy(section) {
+                context.push(self).render(writer)
+            } else {
+                Ok(())
             }
         }
 
         #[inline]
-        fn render_field_inverted_section<S, W>(
+        fn section_key(
             &self,
             key: &str,
-            context: Context<S>,
-            writer: &mut W,
-        ) -> Result<bool, RenderError<W::Error>>
-        where
-            S: stack::RenderStack,
-            W: Writer,
-        {
+            section: Section,
+            context: Context,
+            writer: &mut Writer,
+        ) -> Result<bool, Infallible> {
             match self.get(key) {
-                Some(v) => v.render_inverted_section(context, writer).map(|_| true),
+                Some(v) => v.section(section, context, writer).map(|_| true),
                 None => Ok(false),
             }
         }

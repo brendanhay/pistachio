@@ -1,21 +1,17 @@
+use std::convert::Infallible;
+
 use crate::{
     render::{
-        stack::RenderStack,
-        writer::Writer,
         Context,
         Escape,
         Render,
-        RenderError,
+        Section,
+        Writer,
     },
     Template,
 };
 
 impl<T: Render> Render for Option<T> {
-    #[inline]
-    fn is_truthy(&self) -> bool {
-        self.is_some()
-    }
-
     #[inline]
     fn size_hint(&self, template: &Template) -> usize {
         match self {
@@ -25,30 +21,33 @@ impl<T: Render> Render for Option<T> {
     }
 
     #[inline]
-    fn variable<W: Writer>(
+    fn is_truthy(&self) -> bool {
+        self.is_some()
+    }
+
+    #[inline]
+    fn variable(
         &self,
         escape: Escape,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>> {
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Infallible> {
         if let Some(inner) = self {
-            inner.variable(escape, writer)?;
+            inner.variable(escape, context, writer)?;
         }
 
         Ok(())
     }
 
     #[inline]
-    fn section<S, W>(
+    fn section(
         &self,
-        context: Context<S>,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
+        section: Section,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Infallible> {
         if let Some(item) = self {
-            item.section(context, writer)?;
+            item.section(section, context, writer)?;
         }
 
         Ok(())
@@ -56,11 +55,6 @@ impl<T: Render> Render for Option<T> {
 }
 
 impl<T: Render, E> Render for Result<T, E> {
-    #[inline]
-    fn is_truthy(&self) -> bool {
-        self.is_ok()
-    }
-
     #[inline]
     fn size_hint(&self, template: &Template) -> usize {
         match self {
@@ -70,30 +64,33 @@ impl<T: Render, E> Render for Result<T, E> {
     }
 
     #[inline]
-    fn variable<W: Writer>(
+    fn is_truthy(&self) -> bool {
+        self.is_ok()
+    }
+
+    #[inline]
+    fn variable(
         &self,
         escape: Escape,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>> {
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Infallible> {
         if let Ok(inner) = self {
-            inner.variable(escape, writer)?;
+            inner.variable(escape, context, writer)?;
         }
 
         Ok(())
     }
 
     #[inline]
-    fn section<S, W>(
+    fn section(
         &self,
-        context: Context<S>,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
-    where
-        S: RenderStack,
-        W: Writer,
-    {
+        section: Section,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Infallible> {
         if let Ok(item) = self {
-            item.section(context, writer)?;
+            item.section(section, context, writer)?;
         }
 
         Ok(())

@@ -46,8 +46,8 @@ impl Render for Value {
     fn variable<W: Writer>(
         &self,
         escape: Escape,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>> {
+        writer: &mut Writer
+    ) -> Result<(), Error> {
         match self {
             Value::Null => ().variable(escape, writer),
             Value::Bool(b) => b.variable(escape, writer),
@@ -61,9 +61,9 @@ impl Render for Value {
     #[inline]
     fn section<S, W>(
         &self,
-        context: Context<S>,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
+        context: Context,
+        writer: &mut Writer
+    ) -> Result<(), Error>
     where
         S: stack::RenderStack,
         W: Writer,
@@ -81,9 +81,9 @@ impl Render for Value {
     #[inline]
     fn inverted_section<S, W>(
         &self,
-        context: Context<S>,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>>
+        context: Context,
+        writer: &mut Writer
+    ) -> Result<(), Error>
     where
         S: stack::RenderStack,
         W: Writer,
@@ -103,8 +103,8 @@ impl Render for Value {
         &self,
         key: &str,
         escape: Escape,
-        writer: &mut W,
-    ) -> Result<bool, RenderError<W::Error>> {
+        writer: &mut Writer
+    ) -> Result<bool, Error> {
         match self {
             Value::Null => ().field_variable(key, escape, writer),
             Value::Bool(b) => b.field_variable(key, escape, writer),
@@ -119,9 +119,9 @@ impl Render for Value {
     fn field_section<S, W>(
         &self,
         key: &str,
-        context: Context<S>,
-        writer: &mut W,
-    ) -> Result<bool, RenderError<W::Error>>
+        context: Context,
+        writer: &mut Writer
+    ) -> Result<bool, Error>
     where
         S: stack::RenderStack,
         W: Writer,
@@ -140,9 +140,9 @@ impl Render for Value {
     fn field_inverted_section<S, W>(
         &self,
         key: &str,
-        context: Context<S>,
-        writer: &mut W,
-    ) -> Result<bool, RenderError<W::Error>>
+        context: Context,
+        writer: &mut Writer
+    ) -> Result<bool, Error>
     where
         S: stack::RenderStack,
         W: Writer,
@@ -193,8 +193,8 @@ impl Render for Number {
     fn variable<W: Writer>(
         &self,
         escape: Escape,
-        writer: &mut W,
-    ) -> Result<(), RenderError<W::Error>> {
+        writer: &mut Writer
+    ) -> Result<(), Error> {
         if let Some(n) = self.as_f64() {
             n.variable(escape, writer)
         } else if let Some(n) = self.as_u64() {

@@ -1,14 +1,18 @@
 use std::{
     convert::Infallible,
+    fmt,
     io,
+    rc::Rc,
 };
 
-pub use self::context::Context;
-use self::context::Nodes;
+pub use self::{
+    context::Context,
+    stack::Stack,
+};
 use crate::template::Template;
 
 mod context;
-mod trace;
+mod stack;
 mod value;
 mod writer;
 
@@ -16,25 +20,36 @@ mod writer;
 // mod trace;
 // pub(crate) mod value;
 
+pub struct Writer<'a> {
+    inner: &'a mut dyn io::Write,
+}
+
+impl Writer<'_> {
+    pub fn write(&mut self, escape: Escape, string: &str) -> Result<(), Infallible> {
+        // let _ = self.write.write_all(string.as_bytes());
+
+        Ok(())
+    }
+
+    pub fn write_format(
+        &mut self,
+        escape: Escape,
+        display: impl fmt::Display,
+    ) -> Result<(), Infallible> {
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Escape {
     Html,
     None,
 }
 
-// Since this is disjoint over the writers, maybe move this into the associated Writer::Error type:
-//     IOWriter:     IOError | MissingVariable
-//     StringWriter: Infallible | MissingVariable
-#[derive(Debug)]
-pub enum RenderError<W> {
-    MissingVariable(usize, Box<str>),
-    WriteError(W),
-}
-
-impl<W> From<W> for RenderError<W> {
-    fn from(err: W) -> Self {
-        RenderError::WriteError(err)
-    }
+#[derive(Debug, Clone, Copy)]
+pub enum Section {
+    Positive,
+    Negative,
 }
 
 pub trait Render {
@@ -49,58 +64,61 @@ pub trait Render {
     }
 
     #[inline]
-    fn variable(&self, _escape: Escape, _writer: &mut dyn io::Write) -> Result<(), Infallible> {
+    fn variable(
+        &self,
+        _escape: Escape,
+        _context: Context,
+        _writer: &mut Writer,
+    ) -> Result<(), Infallible> {
+        // XXX: what about erroring by default - this way trying to use
+        // something like {{ foo.bar.baz }} where baz is actually a lambda, will error.
         Ok(())
     }
 
-    // #[inline]
-    // fn variable_key(
-    //     &self,
-    //     _key: &str,
-    //     _escape: Escape,
-    //     _context: &mut Context,
-    // ) -> Result<bool, Infallible> {
-    //     Ok(false)
-    // }
+    /// XXX: maybe push_variable, push_section is more indicative?
 
-    // #[inline]
-    // fn section(&mut self, context: &mut Context, nodes: Nodes) -> Result<(), Infallible> {
-    //     if self.is_truthy() {
-    //         let t = self as &dyn Render;
-    //         let _ = context.push_render(self, nodes)?;
-    //         Ok(())
-    //     } else {
-    //         Ok(())
-    //     }
-    // }
+    #[inline]
+    fn variable_key(
+        &self,
+        _key: &str,
+        _escape: Escape,
+        _context: Context,
+        _writer: &mut Writer,
+    ) -> Result<bool, Infallible> {
+        Ok(false)
+    }
 
-    // #[inline]
-    // fn section_key(
-    //     &self,
-    //     _key: &str,
-    //     _context: &mut Context,
-    //     _nodes: Nodes,
-    // ) -> Result<bool, Infallible> {
-    //     Ok(false)
-    // }
+    #[inline]
+    fn section_is_truthy(&self, section: Section) -> bool {
+        let truthy = self.is_truthy();
+        match section {
+            Section::Positive => truthy,
+            Section::Negative => !truthy,
+        }
+    }
 
-    // #[inline]
-    // fn inverted_section(&self, context: &mut Context) -> Result<(), Infallible>;
-    // // {
-    // // if !self.is_truthy() {
-    // //     context.render()
-    // // } else {
-    // //     Ok(())
-    // // }
-    // // }
+    #[inline]
+    fn section(
+        &self,
+        section: Section,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Infallible> {
+        if self.section_is_truthy(section) {
+            context.push(&self).render(writer)
+        } else {
+            Ok(())
+        }
+    }
 
-    // #[inline]
-    // fn inverted_section_key(
-    //     &self,
-    //     _key: &str,
-    //     _context: &mut Context,
-    //     _nodes: Nodes,
-    // ) -> Result<bool, Infallible> {
-    //     Ok(false)
-    // }
+    #[inline]
+    fn section_key(
+        &self,
+        _key: &str,
+        _section: Section,
+        _context: Context,
+        _writer: &mut Writer,
+    ) -> Result<bool, Infallible> {
+        Ok(false)
+    }
 }

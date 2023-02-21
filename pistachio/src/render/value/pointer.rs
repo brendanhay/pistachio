@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    convert::Infallible,
     ops::Deref,
     rc::Rc,
     sync::Arc,
@@ -7,11 +8,11 @@ use std::{
 
 use crate::{
     render::{
-        writer::Writer,
         Context,
         Escape,
         Render,
-        RenderError,
+        Section,
+        Writer,
     },
     Template,
 };
@@ -30,83 +31,56 @@ macro_rules! impl_pointers {
                     self.deref().is_truthy()
                 }
 
-                // #[inline]
-                // fn render_escape<W: Writer>(&self, escape: Escape, writer: &mut W) -> Result<(), RenderError<W::Error>> {
-                //     self.deref().render_escape(escape, writer)
-                // }
+                #[inline]
+                fn variable(
+                    &self,
+                    escape: Escape,
+                    context: Context,
+                    writer: &mut Writer,
+                ) -> Result<(), Infallible> {
+                    self.deref().variable(escape, context, writer)
+                }
 
-                // #[inline]
-                // fn render_section<S, W>(
-                //     &self,
-                //     context: Context<S>,
-                //     writer: &mut W,
-                // ) -> Result<(), RenderError<W::Error>>
-                // where
-                //     S: RenderStack,
-                //     W: Writer,
-                // {
-                //     self.deref().render_section(context, writer)
-                // }
+                #[inline]
+                fn variable_key(
+                    &self,
+                    key: &str,
+                    escape: Escape,
+                    context: Context,
+                    writer: &mut Writer,
+                ) -> Result<bool, Infallible> {
+                    self.deref().variable_key(key, escape, context, writer)
+                }
 
-                // #[inline]
-                // fn render_inverted_section<S, W>(
-                //     &self,
-                //     context: Context<S>,
-                //     writer: &mut W,
-                // ) -> Result<(), RenderError<W::Error>>
-                // where
-                //     S: RenderStack,
-                //     W: Writer,
-                // {
-                //     self.deref().render_inverted_section(context, writer)
-                // }
+                #[inline]
+                fn section(
+                    &self,
+                    section: Section,
+                    context: Context,
+                    writer: &mut Writer,
+                ) -> Result<(), Infallible> {
+                    self.deref().section(section, context, writer)
+                }
 
-                // #[inline]
-                // fn render_field_escape<W: Writer>(
-                //     &self,
-                //     key: &str,
-                //     escape: Escape,
-                //     writer: &mut W,
-                // ) -> Result<bool, RenderError<W::Error>> {
-                //     self.deref().render_field_escape(key, escape, writer)
-                // }
-
-                // #[inline]
-                // fn render_field_section<S, W>(
-                //     &self,
-                //     key: &str,
-                //     context: Context<S>,
-                //     writer: &mut W,
-                // ) -> Result<bool, RenderError<W::Error>>
-                // where
-                //     S: RenderStack,
-                //     W: Writer,
-                // {
-                //     self.deref().render_field_section(key, context, writer)
-                // }
-
-                // #[inline]
-                // fn render_field_inverted_section<S, W>(
-                //     &self,
-                //     key: &str,
-                //     context: Context<S>,
-                //     writer: &mut W,
-                // ) -> Result<bool, RenderError<W::Error>>
-                // where
-                //     S: RenderStack,
-                //     W: Writer,
-                // {
-                //     self.deref().render_field_inverted_section(key, context, writer)
-                // }
+                #[inline]
+                fn section_key(
+                    &self,
+                    key: &str,
+                    section: Section,
+                    context: Context,
+                    writer: &mut Writer,
+                ) -> Result<bool, Infallible> {
+                    self.deref().section_key(key, section, context, writer)
+                }
             }
         )*
     }
 }
 
 impl_pointers! {
-    &T
-    // Box<T>,
-    // Rc<T>,
-    // Arc<T>,
-    // Cow<'_, T>: ToOwned
+    &T,
+    Box<T>,
+    Rc<T>,
+    Arc<T>,
+    Cow<'_, T>: ToOwned
 }

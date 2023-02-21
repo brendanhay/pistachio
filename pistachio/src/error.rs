@@ -7,7 +7,6 @@ use std::{
 use crate::{
     lexer::Token,
     parser::ParseError,
-    render::RenderError,
 };
 
 // XXX: Tidy this up
@@ -34,14 +33,14 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<RenderError<io::Error>> for Error {
-    fn from(err: RenderError<io::Error>) -> Self {
-        match err {
-            RenderError::WriteError(io) => Error::Io(io),
-            RenderError::MissingVariable(start, key) => Error::Render(start, key),
-        }
-    }
-}
+// impl From<RenderError<io::Error>> for Error {
+//     fn from(err: RenderError<io::Error>) -> Self {
+//         match err {
+//             RenderError::WriteError(io) => Error::Io(io),
+//             RenderError::MissingVariable(start, key) => Error::Render(start, key),
+//         }
+//     }
+// }
 
 impl From<ParseError<Token<'_>>> for Error {
     fn from(err: ParseError<Token<'_>>) -> Self {

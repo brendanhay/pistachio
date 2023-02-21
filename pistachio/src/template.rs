@@ -248,15 +248,15 @@ impl fmt::Display for Key<'_> {
     }
 }
 
-/// The `Path` grammar production rule representing a non-empty list of dotted
+/// The `Name` grammar production rule representing a non-empty list of dotted
 /// `Key`s such as `foo.bar.baz`.
 #[derive(Debug)]
-pub struct Path<'a> {
+pub struct Name<'a> {
     head: Key<'a>,
     tail: Vec<Key<'a>>,
 }
 
-impl PartialEq<str> for Path<'_> {
+impl PartialEq<str> for Name<'_> {
     fn eq(&self, other: &str) -> bool {
         if self.head.ident == other {
             true
@@ -269,10 +269,11 @@ impl PartialEq<str> for Path<'_> {
     }
 }
 
-impl fmt::Display for Path<'_> {
+// Since `Name` is crate internal, this is only used when displaying errors.
+impl fmt::Display for Name<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Since `Path` is crate internal, this is only used on error.
         write!(f, "{}", self.head)?;
+
         for key in &self.tail {
             write!(f, ".{}", key)?;
         }
@@ -281,7 +282,7 @@ impl fmt::Display for Path<'_> {
     }
 }
 
-impl<'a> Path<'a> {
+impl<'a> Name<'a> {
     pub fn new(head: Key<'a>, tail: Vec<Key<'a>>) -> Self {
         Self { head, tail }
     }
