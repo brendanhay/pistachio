@@ -1,9 +1,7 @@
-use std::convert::Infallible;
-
 use crate::{
+    error::Error,
     render::{
         Context,
-        Escape,
         Render,
         Writer,
     },
@@ -29,7 +27,7 @@ impl Render for String {
     }
 
     #[inline]
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         writer.write(context.escape, self)
     }
 }
@@ -46,7 +44,7 @@ impl Render for str {
     }
 
     #[inline]
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         writer.write(context.escape, self)
     }
 }
@@ -63,7 +61,7 @@ impl Render for bool {
     }
 
     #[inline]
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         writer.write(context.escape, if *self { "true" } else { "false" })
     }
 }

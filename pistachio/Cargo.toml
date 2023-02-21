@@ -8,11 +8,11 @@ workspace = ".."
 readme = "../README.md"
 
 [dependencies]
-ahash = { version = "0.8", optional = true }
 lalrpop-util = { version = "0.19", features = [] }
+
+# Optional
+ahash = { version = "0.8", optional = true }
 pistachio-macros = { version = "0.1", optional = true, path = "../pistachio-macros" }
-serde = "1.0.152"
-serde_closure = "0.3.3"
 serde_json = { version = "1", optional = true }
 
 [build-dependencies]
@@ -23,9 +23,8 @@ quickcheck = "1"
 quickcheck_macros = "1"
 
 [features]
-default = ["ahash", "macros", "serde_json", "trace"]
+default = ["ahash", "macros"]
 
 ahash = ["dep:ahash"]
 macros = ["dep:pistachio-macros"]
 serde_json = ["dep:serde_json"]
-trace = []

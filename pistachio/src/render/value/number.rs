@@ -1,6 +1,5 @@
-use std::convert::Infallible;
-
 use crate::{
+    error::Error,
     render::{
         Context,
         Render,
@@ -28,8 +27,8 @@ macro_rules! impl_numbers {
                     &self,
                     context: Context,
                     writer: &mut Writer
-                ) -> Result<(), Infallible> {
-                    writer.write_format(context.escape, self)
+                ) -> Result<(), Error> {
+                    writer.format(context.escape, self)
                 }
             }
         )*
@@ -58,8 +57,8 @@ macro_rules! impl_float {
                     &self,
                     context: Context,
                     writer: &mut Writer
-                ) -> Result<(), Infallible> {
-                    writer.write_format(context.escape, self)
+                ) -> Result<(), Error> {
+                    writer.format(context.escape, self)
                 }
             }
         )*

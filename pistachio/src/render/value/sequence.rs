@@ -1,10 +1,10 @@
-use std::convert::Infallible;
-
-use crate::render::{
-    Context,
-    Render,
-    Section,
-    Writer,
+use crate::{
+    error::Error,
+    render::{
+        Context,
+        Render,
+        Writer,
+    },
 };
 
 macro_rules! impl_sequence {
@@ -15,11 +15,11 @@ macro_rules! impl_sequence {
         }
 
         #[inline]
-        fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+        fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
             if self.section_is_truthy(context.section) {
                 for item in self.iter() {
                     if item.is_truthy() {
-                        context.render(writer)?;
+                        context.render_to_writer(writer)?;
                     }
                 }
             }

@@ -336,8 +336,6 @@ dependencies = [
  "pistachio-macros",
  "quickcheck",
  "quickcheck_macros",
- "serde",
- "serde_closure",
  "serde_json",
 ]
 
@@ -499,42 +497,6 @@ name = "serde"
 version = "1.0.152"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb7d1f0d3021d347a83e556fc4683dea2ea09d87bccdf88ff5c12545d89d5efb"
-dependencies = [
- "serde_derive",
-]
-
-[[package]]
-name = "serde_closure"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9659437bcfbf4dd061a5e1f7994312990ac5b24d781f7ce577eefc3a27792da0"
-dependencies = [
- "rustversion",
- "serde",
- "serde_closure_derive",
-]
-
-[[package]]
-name = "serde_closure_derive"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a6bb4d612b5caad466a9a09ee550445e34123a74075607cc0d882ff1ca28f46"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "serde_derive"
-version = "1.0.152"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af487d118eecd09402d70a5d72551860e788df87b464af30e5ea6a38c75c541e"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
 
 [[package]]
 name = "serde_json"

@@ -20,13 +20,15 @@ macro_rules! balanced {
         if $open == $close {
             $action
         } else {
+            let msg = format!(
+                "{{{{{token}{open}}}}} is missing the corresponding {{{{/{close}}}}} close tag",
+                token = $token,
+                open = $open,
+                close = $close,
+            );
+
             Err(crate::parser::ParseError::User {
-                error: crate::error::Error::Parser(Box::from(format!(
-                    "{{{{{token}{open}}}}} is missing the corresponding {{{{/{close}}}}} close tag",
-                    token = $token,
-                    open = $open,
-                    close = $close,
-                ))),
+                error: crate::error::Error::ParsingFailed(Box::from(msg)),
             })
         }
     };

@@ -1,11 +1,8 @@
-use std::convert::Infallible;
-
 use crate::{
+    error::Error,
     render::{
         Context,
-        Escape,
         Render,
-        Section,
         Writer,
     },
     Template,
@@ -26,7 +23,7 @@ impl<T: Render> Render for Option<T> {
     }
 
     #[inline]
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         if let Some(inner) = self {
             inner.render(context, writer)?;
         }
@@ -35,7 +32,7 @@ impl<T: Render> Render for Option<T> {
     }
 
     #[inline]
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         if let Some(item) = self {
             item.render_section(context, writer)?;
         }
@@ -59,7 +56,7 @@ impl<T: Render, E> Render for Result<T, E> {
     }
 
     #[inline]
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         if let Ok(inner) = self {
             inner.render(context, writer)?;
         }
@@ -68,7 +65,7 @@ impl<T: Render, E> Render for Result<T, E> {
     }
 
     #[inline]
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         if let Ok(item) = self {
             item.render_section(context, writer)?;
         }

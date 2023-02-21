@@ -1,12 +1,10 @@
-use std::convert::Infallible;
-
 use crate::{
+    error::Error,
     render::{
         Context,
         Render,
         Writer,
     },
-    Template,
 };
 
 // struct Lambda {
@@ -35,14 +33,14 @@ use crate::{
 /// default delimiters (see Set Delimiter below) against the current context.
 
 impl<T: Render> Render for fn() -> T {
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         self().render(context, writer)
     }
 
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         let frame = self();
         if frame.section_is_truthy(context.section) {
-            context.push(&frame).render(writer)?;
+            context.push(&frame).render_to_writer(writer)?;
         }
 
         Ok(())
@@ -51,14 +49,14 @@ impl<T: Render> Render for fn() -> T {
 
 // Box<dyn Fn() -> T>
 impl<T: Render> Render for dyn Fn() -> T {
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         self().render(context, writer)
     }
 
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         let frame = self();
         if frame.section_is_truthy(context.section) {
-            context.push(&frame).render(writer)?;
+            context.push(&frame).render_to_writer(writer)?;
         }
 
         Ok(())
@@ -66,11 +64,11 @@ impl<T: Render> Render for dyn Fn() -> T {
 }
 
 impl<T: Render> Render for fn(String) -> T {
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
-        let source = context.capture()?;
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        let source = context.render_to_string(8)?;
         let frame = self(source);
         if frame.section_is_truthy(context.section) {
-            context.push(&frame).render(writer)?;
+            context.push(&frame).render_to_writer(writer)?;
         }
 
         Ok(())
@@ -79,11 +77,11 @@ impl<T: Render> Render for fn(String) -> T {
 
 // Box<dyn Fn(String) -> T>
 impl<T: Render> Render for dyn Fn(String) -> T {
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
-        let source = context.capture()?;
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        let source = context.render_to_string(8)?;
         let frame = self(source);
         if frame.section_is_truthy(context.section) {
-            context.push(&frame).render(writer)?;
+            context.push(&frame).render_to_writer(writer)?;
         }
 
         Ok(())

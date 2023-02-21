@@ -1,12 +1,13 @@
-use std::convert::Infallible;
-
 pub use self::{
     context::Context,
     stack::Stack,
     value::Source,
     writer::Writer,
 };
-use crate::template::Template;
+use crate::{
+    error::Error,
+    template::Template,
+};
 
 mod context;
 mod stack;
@@ -40,7 +41,7 @@ pub trait Render {
     }
 
     #[inline]
-    fn render(&self, _context: Context, _writer: &mut Writer) -> Result<(), Infallible> {
+    fn render(&self, _context: Context, _writer: &mut Writer) -> Result<(), Error> {
         // XXX: what about erroring by default - this way trying to use
         // something like {{ foo.bar.baz }} where baz is actually a lambda, will error.
         Ok(())
@@ -52,14 +53,14 @@ pub trait Render {
         _key: &str,
         _context: Context,
         _writer: &mut Writer,
-    ) -> Result<bool, Infallible> {
+    ) -> Result<bool, Error> {
         Ok(false)
     }
 
     #[inline]
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         if self.section_is_truthy(context.section) {
-            context.push(&self).render(writer)
+            context.push(&self).render_to_writer(writer)
         } else {
             Ok(())
         }
@@ -71,7 +72,7 @@ pub trait Render {
         _key: &str,
         _context: Context,
         _writer: &mut Writer,
-    ) -> Result<bool, Infallible> {
+    ) -> Result<bool, Error> {
         Ok(false)
     }
 }

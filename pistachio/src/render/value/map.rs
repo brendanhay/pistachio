@@ -4,17 +4,19 @@ use std::{
         BTreeMap,
         HashMap,
     },
-    convert::Infallible,
     hash::{
         BuildHasher,
         Hash,
     },
 };
 
-use crate::render::{
-    Context,
-    Render,
-    Writer,
+use crate::{
+    error::Error,
+    render::{
+        Context,
+        Render,
+        Writer,
+    },
 };
 
 macro_rules! impl_map {
@@ -30,7 +32,7 @@ macro_rules! impl_map {
             key: &str,
             context: Context,
             writer: &mut Writer,
-        ) -> Result<bool, Infallible> {
+        ) -> Result<bool, Error> {
             match self.get(key) {
                 Some(v) => v.render(context, writer).map(|_| true),
                 None => Ok(false),
@@ -38,9 +40,9 @@ macro_rules! impl_map {
         }
 
         #[inline]
-        fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+        fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
             if self.section_is_truthy(context.section) {
-                context.push(self).render(writer)
+                context.push(self).render_to_writer(writer)
             } else {
                 Ok(())
             }
@@ -52,7 +54,7 @@ macro_rules! impl_map {
             key: &str,
             context: Context,
             writer: &mut Writer,
-        ) -> Result<bool, Infallible> {
+        ) -> Result<bool, Error> {
             match self.get(key) {
                 Some(v) => v.render_section(context, writer).map(|_| true),
                 None => Ok(false),

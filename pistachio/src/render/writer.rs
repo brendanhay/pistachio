@@ -3,6 +3,8 @@ use std::{
     io,
 };
 
+use crate::error::Error;
+
 #[derive(Debug, Clone, Copy)]
 pub enum Escape {
     Html,
@@ -13,32 +15,30 @@ pub struct Writer<'a> {
     inner: &'a mut dyn io::Write,
 }
 
-impl Writer<'_> {
+impl<'a> Writer<'a> {
     #[inline]
-    pub fn new(inner: &mut impl io::Write) -> Self {
+    pub fn new(inner: &'a mut impl io::Write) -> Self {
         Self { inner }
     }
 
     #[inline]
-    pub fn write_escape(&mut self, escape: Escape, string: &str) -> Result<(), io::Error> {
+    pub fn write(&mut self, escape: Escape, string: &str) -> Result<(), Error> {
         match escape {
             Escape::Html => self.write_escaped_bytes(string.as_bytes()),
             Escape::None => self.inner.write_all(string.as_bytes()),
         }
+        .map_err(Error::Io)
     }
 
     #[inline]
-    pub fn write_format(
-        &mut self,
-        escape: Escape,
-        display: impl fmt::Display,
-    ) -> Result<(), io::Error> {
+    pub fn format(&mut self, escape: Escape, display: impl fmt::Display) -> Result<(), Error> {
         use io::Write as _;
 
         match escape {
             Escape::Html => write!(self, "{}", display),
             Escape::None => write!(self.inner, "{}", display),
         }
+        .map_err(Error::Io)
     }
 
     #[inline]

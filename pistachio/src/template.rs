@@ -1,6 +1,5 @@
 use std::{
     borrow::Cow,
-    convert::Infallible,
     fmt,
     io,
     iter,
@@ -13,6 +12,7 @@ use crate::{
     render::{
         Context,
         Render,
+        Writer,
     },
     Error,
     Loader,
@@ -22,7 +22,7 @@ use crate::{
 /// Represents a parsed and normalised template.
 #[derive(Debug)]
 pub struct Template<'a> {
-    pub(crate) size_hint: usize,
+    pub(crate) size_hint: usize, // XXX: these are exposed to the grammar
     pub(crate) nodes: Vec<Node<'a>>,
     source: Cow<'a, str>,
     raise: bool,
@@ -72,46 +72,33 @@ impl<'a> Template<'a> {
         })
     }
 
-    // pub fn render<S: Render>(&self, vars: &S) -> Result<String, RenderError<Infallible>> {
-    //     // let data = encoder::to_data(data)?;
-    //     let mut capacity = vars.size_hint(self);
+    pub fn render<T>(&self, vars: &T) -> Result<String, Error>
+    where
+        T: Render,
+    {
+        let mut capacity = vars.size_hint(self);
 
-    //     // Add 25% for escaping and various expansions.
-    //     capacity += capacity / 4;
+        // Add 25% for escaping and various expansions.
+        capacity += capacity / 4;
 
-    //     let mut buffer = String::with_capacity(capacity);
-    //     let _ = self.render_to_string(vars, &mut buffer)?;
+        Context::new(&self.nodes, self.raise)
+            .push(vars)
+            .render_to_string(capacity)
+    }
 
-    //     Ok(buffer)
-    // }
+    pub fn render_to_writer<T, W>(&self, vars: &T, writer: &mut W) -> Result<(), Error>
+    where
+        T: Render,
+        W: io::Write,
+    {
+        let mut writer = Writer::new(writer);
 
-    // pub fn render_to_string<S: Render>(
-    //     &self,
-    //     data: &S,
-    //     buffer: &mut String,
-    // ) -> Result<(), RenderError<Infallible>> {
-    //     // Writing to a String is Infallible
-    //     Context::new(self.raise, &self.nodes)
-    //         .push(&data)
-    //         .render(buffer)
-    // }
+        Context::new(&self.nodes, self.raise)
+            .push(&vars)
+            .render_to_writer(&mut writer)?;
 
-    // pub fn render_to_writer<S, W>(
-    //     &self,
-    //     data: &S,
-    //     writer: &mut W,
-    // ) -> Result<(), RenderError<io::Error>>
-    // where
-    //     S: Render,
-    //     W: io::Write,
-    // {
-    //     let mut writer = EscapedWriter::new(writer);
-    //     let () = Context::new(self.raise, &self.nodes)
-    //         .push(&data)
-    //         .render(&mut writer)?;
-
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
     pub(crate) fn include(&self) -> Vec<Node<'a>> {
         self.nodes.clone()
@@ -148,14 +135,6 @@ impl<'a> Template<'a> {
         buffer
     }
 }
-
-// #[test]
-// fn node_data() {
-//     let key = Key { start: 592, ident: "foo" };
-//     let children = 3;
-//     let node = Node::new(Tag::Section, key, "", children)
-
-// }
 
 /// A node of the template abstract syntax tree.
 /// Named as such to avoid confusion with the mustache `{{$block}}` tag.

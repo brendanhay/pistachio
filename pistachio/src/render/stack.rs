@@ -1,12 +1,11 @@
-use std::convert::Infallible;
-
 use super::{
     Context,
-    Escape,
-    Section,
     Writer,
 };
-use crate::Render;
+use crate::{
+    error::Error,
+    render::Render,
+};
 
 #[derive(Clone, Copy)]
 pub struct Stack<'a> {
@@ -61,7 +60,7 @@ impl<'a> Stack<'a> {
         key: &str,
         context: Context,
         writer: &mut Writer,
-    ) -> Result<bool, Infallible> {
+    ) -> Result<bool, Error> {
         if self.a.render_named(key, context, writer)?
             || self.b.render_named(key, context, writer)?
             || self.c.render_named(key, context, writer)?
@@ -81,7 +80,7 @@ impl<'a> Stack<'a> {
         key: &str,
         context: Context,
         writer: &mut Writer,
-    ) -> Result<(), Infallible> {
+    ) -> Result<(), Error> {
         if !self.a.render_named_section(key, context, writer)? {
             let context = context.pop();
             if !self.b.render_named_section(key, context, writer)? {

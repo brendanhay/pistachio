@@ -1,30 +1,23 @@
-use std::{
-    self,
-    convert::Infallible,
-    fmt,
-    io,
-    ops::Range,
-    rc::Rc,
-};
+use std::ops::Range;
 
 use super::{
+    writer::Escape,
     // stack::{
     //     PushStack,
     //     RenderStack,
     // },
     // writer::Writer,
-    Escape,
     Render,
     Section,
     Stack,
     Writer,
 };
 use crate::{
+    error::Error,
     template::{
         Node,
         Tag,
     },
-    Template,
 };
 
 /// The mustache context containing the execution stack and current sub-tree of nodes.
@@ -38,7 +31,7 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    pub fn new(self, raise: bool, nodes: &'a [Node<'a>]) -> Self {
+    pub fn new(nodes: &'a [Node<'a>], raise: bool) -> Self {
         Self {
             stack: Stack::new(),
             nodes,
@@ -87,11 +80,11 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn capture(self) -> Result<String, Infallible> {
-        let mut buffer: Vec<u8> = Vec::with_capacity(8);
-        let mut writer: Writer = Writer { inner: &mut buffer };
+    pub fn render_to_string(self, capacity: usize) -> Result<String, Error> {
+        let mut buffer = Vec::with_capacity(capacity);
+        let mut writer: Writer = Writer::new(&mut buffer);
 
-        self.render(&mut writer)?;
+        self.render_to_writer(&mut writer)?;
 
         Ok(unsafe {
             // We do not emit invalid UTF-8.
@@ -99,7 +92,7 @@ impl<'a> Context<'a> {
         })
     }
 
-    pub fn render(self, writer: &mut Writer) -> Result<(), Infallible> {
+    pub fn render_to_writer(self, writer: &mut Writer) -> Result<(), Error> {
         let mut index = 0;
 
         while let Some(node) = self.nodes.get(index) {
@@ -160,11 +153,11 @@ impl<'a> Context<'a> {
     }
 }
 
-// pub fn trace(&mut self, trace: &'a str) -> Result<(), Infallible> {}
+// pub fn trace(&mut self, trace: &'a str) -> Result<(), Error> {}
 
-// pub fn push<F>(&mut self, frame: &'a dyn Render, action: F) -> Result<(), Infallible>
+// pub fn push<F>(&mut self, frame: &'a dyn Render, action: F) -> Result<(), Error>
 // where
-//     F: FnOnce(&mut Self) -> Result<(), Infallible>,
+//     F: FnOnce(&mut Self) -> Result<(), Error>,
 // {
 //     self.stack.push(frame);
 //     let result = action(self);

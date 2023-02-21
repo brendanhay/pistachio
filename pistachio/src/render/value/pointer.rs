@@ -1,17 +1,15 @@
 use std::{
     borrow::Cow,
-    convert::Infallible,
     ops::Deref,
     rc::Rc,
     sync::Arc,
 };
 
 use crate::{
+    error::Error,
     render::{
         Context,
-        Escape,
         Render,
-        Section,
         Writer,
     },
     Template,
@@ -36,7 +34,7 @@ macro_rules! impl_pointers {
                     &self,
                     context: Context,
                     writer: &mut Writer,
-                ) -> Result<(), Infallible> {
+                ) -> Result<(), Error> {
                     self.deref().render(context, writer)
                 }
 
@@ -46,7 +44,7 @@ macro_rules! impl_pointers {
                     key: &str,
                     context: Context,
                     writer: &mut Writer,
-                ) -> Result<bool, Infallible> {
+                ) -> Result<bool, Error> {
                     self.deref().render_named(key, context, writer)
                 }
 
@@ -55,7 +53,7 @@ macro_rules! impl_pointers {
                     &self,
                     context: Context,
                     writer: &mut Writer,
-                ) -> Result<(), Infallible> {
+                ) -> Result<(), Error> {
                     self.deref().render_section(context, writer)
                 }
 
@@ -65,7 +63,7 @@ macro_rules! impl_pointers {
                     key: &str,
                     context: Context,
                     writer: &mut Writer,
-                ) -> Result<bool, Infallible> {
+                ) -> Result<bool, Error> {
                     self.deref().render_named_section(key, context, writer)
                 }
             }
