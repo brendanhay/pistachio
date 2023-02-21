@@ -13,9 +13,7 @@ use std::{
 
 use crate::render::{
     Context,
-    Escape,
     Render,
-    Section,
     Writer,
 };
 
@@ -27,27 +25,21 @@ macro_rules! impl_map {
         }
 
         #[inline]
-        fn variable_key(
+        fn render_named(
             &self,
             key: &str,
-            escape: Escape,
             context: Context,
             writer: &mut Writer,
         ) -> Result<bool, Infallible> {
             match self.get(key) {
-                Some(v) => v.variable(escape, context, writer).map(|_| true),
+                Some(v) => v.render(context, writer).map(|_| true),
                 None => Ok(false),
             }
         }
 
         #[inline]
-        fn section(
-            &self,
-            section: Section,
-            context: Context,
-            writer: &mut Writer,
-        ) -> Result<(), Infallible> {
-            if self.section_is_truthy(section) {
+        fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+            if self.section_is_truthy(context.section) {
                 context.push(self).render(writer)
             } else {
                 Ok(())
@@ -55,15 +47,14 @@ macro_rules! impl_map {
         }
 
         #[inline]
-        fn section_key(
+        fn render_named_section(
             &self,
             key: &str,
-            section: Section,
             context: Context,
             writer: &mut Writer,
         ) -> Result<bool, Infallible> {
             match self.get(key) {
-                Some(v) => v.section(section, context, writer).map(|_| true),
+                Some(v) => v.render_section(context, writer).map(|_| true),
                 None => Ok(false),
             }
         }

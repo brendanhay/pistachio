@@ -2,68 +2,105 @@ use std::{
     error,
     fmt,
     io,
+    result,
 };
 
-use crate::{
-    lexer::Token,
-    parser::ParseError,
-};
+pub type Result<T> = result::Result<T, Error>;
 
-// XXX: Tidy this up
-
-/// Error type used that can be emitted during template parsing.
-#[derive(Debug)]
-pub enum Error {
-    /// An IO error was encountered - happens when parsing a file
-    Io(io::Error),
-    Lexer(Box<str>),
-    Parser(Box<str>),
-    Render(usize, Box<str>),
-    ParsingFailed(ParseError<Box<str>, Box<Error>>),
-    InvalidPartial(Box<str>),
-    LoadingDisabled,
-    NotFound(Box<str>),
+pub struct Error {
+    info: Box<ErrorInfo>,
 }
 
-impl error::Error for Error {}
+impl Error {
+    pub(crate) fn syntax(kind: ErrorKind, line: usize, column: usize) -> Self {
+        Error {
+            info: Box::new(ErrorInfo { kind, line, column }),
+        }
+    }
 
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
-        Error::Io(err)
+    pub(crate) fn io(error: io::Error) -> Self {
+        Error {
+            info: Box::new(ErrorInfo {
+                kind: ErrorKind::Io(error),
+                line: 0,
+                column: 0,
+            }),
+        }
     }
 }
 
-// impl From<RenderError<io::Error>> for Error {
-//     fn from(err: RenderError<io::Error>) -> Self {
-//         match err {
-//             RenderError::WriteError(io) => Error::Io(io),
-//             RenderError::MissingVariable(start, key) => Error::Render(start, key),
-//         }
-//     }
-// }
-
-impl From<ParseError<Token<'_>>> for Error {
-    fn from(err: ParseError<Token<'_>>) -> Self {
-        let err = err.map_token(|token| Box::from(token.to_string()));
-        let err = err.map_error(|error| Box::from(error));
-
-        Error::ParsingFailed(err)
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Error({:?}, line: {}, column: {})",
+            self.info.code.to_string(),
+            self.info.line,
+            self.info.column
+        )
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Error::*;
+        Display::fmt(&*self.info, f)
+    }
+}
 
+struct ErrorInfo {
+    kind: ErrorKind,
+    line: usize,
+    column: usize,
+}
+
+impl fmt::Display for ErrorInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.line == 0 {
+            fmt::Display::fmt(&self.kind, f)
+        } else {
+            write!(
+                f,
+                "{} at line {} column {}",
+                self.kind, self.line, self.column
+            )
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ErrorKind {
+    /// Catchall for syntax error messages
+    Message(Box<str>),
+
+    /// An IO error occurred while parsing or rendering.
+    Io(io::Error),
+
+    /// Loading templates at runtime is disabled.
+    LoadingDisabled,
+
+    /// An attempt to include a partial or parent failed.
+    InvalidPartial,
+
+    /// The specified template wasn't found.
+    NotFound,
+
+    /// Tried to serialize a map key that was not a string.
+    KeyMustBeAString,
+
+    /// Tried to serialize a number bigger than the maximum allowable value for its type.
+    NumberOutOfRange,
+}
+
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Io(err) => err.fmt(f),
-            Lexer(err) => err.fmt(f),
-            Parser(err) => err.fmt(f),
-            Render(start, key) => write!(f, "Missing variable `{}` at position {}", key, start),
-            ParsingFailed(err) => err.fmt(f),
-            LoadingDisabled => write!(f, "Partials are not allowed in the current context"),
-            InvalidPartial(path) => path.fmt(f),
-            NotFound(path) => path.fmt(f),
+            ErrorKind::Message(msg) => f.write_str(msg),
+            ErrorKind::Io(err) => fmt::Display::fmt(err, f),
+            ErrorKind::NumberOutOfRange => f.write_str("number out of range"),
+            ErrorKind::KeyMustBeAString => f.write_str("key must be a string"),
+            ErrorKind::LoadingDisabled => todo!(),
+            ErrorKind::InvalidPartial => todo!(),
+            ErrorKind::NotFound => todo!(),
         }
     }
 }

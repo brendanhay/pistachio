@@ -3,9 +3,7 @@ use std::convert::Infallible;
 use crate::{
     render::{
         Context,
-        Escape,
         Render,
-        Section,
         Writer,
     },
     Template,
@@ -36,43 +34,30 @@ use crate::{
 /// as a Mustache template before interpolation. It will be rendered using the
 /// default delimiters (see Set Delimiter below) against the current context.
 
-pub struct Source {
-    pub source: String,
-}
-
-impl Render for Source {
-    #[inline]
-    fn variable(
-        &self,
-        _escape: Escape,
-        context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
-        let template = Template::new(&self.source).unwrap();
-        let context = context.fork(&template.nodes);
-
-        context.render(writer)
-    }
-}
-
 impl<T: Render> Render for fn() -> T {
-    fn variable(
-        &self,
-        escape: Escape,
-        context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
-        self().variable(escape, context, writer)
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+        self().render(context, writer)
     }
 
-    fn section(
-        &self,
-        section: Section,
-        context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
         let frame = self();
-        if frame.section_is_truthy(section) {
+        if frame.section_is_truthy(context.section) {
+            context.push(&frame).render(writer)?;
+        }
+
+        Ok(())
+    }
+}
+
+// Box<dyn Fn() -> T>
+impl<T: Render> Render for dyn Fn() -> T {
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+        self().render(context, writer)
+    }
+
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+        let frame = self();
+        if frame.section_is_truthy(context.section) {
             context.push(&frame).render(writer)?;
         }
 
@@ -81,15 +66,23 @@ impl<T: Render> Render for fn() -> T {
 }
 
 impl<T: Render> Render for fn(String) -> T {
-    fn section(
-        &self,
-        section: Section,
-        context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
         let source = context.capture()?;
         let frame = self(source);
-        if frame.section_is_truthy(section) {
+        if frame.section_is_truthy(context.section) {
+            context.push(&frame).render(writer)?;
+        }
+
+        Ok(())
+    }
+}
+
+// Box<dyn Fn(String) -> T>
+impl<T: Render> Render for dyn Fn(String) -> T {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+        let source = context.capture()?;
+        let frame = self(source);
+        if frame.section_is_truthy(context.section) {
             context.push(&frame).render(writer)?;
         }
 

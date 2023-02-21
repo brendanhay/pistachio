@@ -26,28 +26,18 @@ impl<T: Render> Render for Option<T> {
     }
 
     #[inline]
-    fn variable(
-        &self,
-        escape: Escape,
-        context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
         if let Some(inner) = self {
-            inner.variable(escape, context, writer)?;
+            inner.render(context, writer)?;
         }
 
         Ok(())
     }
 
     #[inline]
-    fn section(
-        &self,
-        section: Section,
-        context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
         if let Some(item) = self {
-            item.section(section, context, writer)?;
+            item.render_section(context, writer)?;
         }
 
         Ok(())
@@ -69,28 +59,18 @@ impl<T: Render, E> Render for Result<T, E> {
     }
 
     #[inline]
-    fn variable(
-        &self,
-        escape: Escape,
-        context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
         if let Ok(inner) = self {
-            inner.variable(escape, context, writer)?;
+            inner.render(context, writer)?;
         }
 
         Ok(())
     }
 
     #[inline]
-    fn section(
-        &self,
-        section: Section,
-        context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
         if let Ok(item) = self {
-            item.section(section, context, writer)?;
+            item.render_section(context, writer)?;
         }
 
         Ok(())

@@ -32,7 +32,9 @@ use crate::{
 pub struct Context<'a> {
     stack: Stack<'a>,
     nodes: &'a [Node<'a>],
-    raise: bool,
+    pub section: Section,
+    pub escape: Escape,
+    pub raise: bool,
 }
 
 impl<'a> Context<'a> {
@@ -40,6 +42,8 @@ impl<'a> Context<'a> {
         Self {
             stack: Stack::new(),
             nodes,
+            section: Section::Positive,
+            escape: Escape::Html,
             raise,
         }
     }
@@ -58,6 +62,27 @@ impl<'a> Context<'a> {
     pub fn push(self, frame: &'a dyn Render) -> Self {
         Self {
             stack: self.stack.push(frame),
+            ..self
+        }
+    }
+
+    pub fn pop(self) -> Self {
+        Self {
+            stack: self.stack.pop(),
+            ..self
+        }
+    }
+
+    fn inverted(self) -> Self {
+        Self {
+            section: Section::Negative,
+            ..self
+        }
+    }
+
+    fn unescaped(self) -> Self {
+        Self {
+            escape: Escape::None,
             ..self
         }
     }
@@ -82,54 +107,52 @@ impl<'a> Context<'a> {
 
             match node.tag {
                 Tag::Escaped => {
-                    let found = self.stack.variable_key(node.key, self, writer)?;
+                    let found = self.stack.render_stack(node.key, self, writer)?;
+
                     if !found && self.raise {
                         return Ok(()); // Err(RenderError::MissingVariable(node.start, node.key.into()));
                     }
                 },
 
-                // Tag::Unescaped => {
-                //     let found = self
-                //         .stack
-                //         .render_stack_escape(node.key, Escape::None, writer)?;
+                Tag::Unescaped => {
+                    let found = self
+                        .stack
+                        .render_stack(node.key, self.unescaped(), writer)?;
 
-                //     if !found && self.raise {
-                //         return Err(RenderError::MissingVariable(node.start, node.key.into()));
-                //     }
-                // },
-
-                // Tag::Section => {
-                //     let children = node.children;
-                //     self.stack.render_stack_section(
-                //         node.key,
-                //         self.children(index..index + children),
-                //         writer,
-                //     )?;
-
-                //     index += children;
-                // },
-
-                // Tag::Inverted => {
-                //     let children = node.children;
-                //     self.stack.render_stack_inverted_section(
-                //         node.key,
-                //         self.children(index..index + children),
-                //         writer,
-                //     )?;
-
-                //     index += children;
-                // },
-
-                // Tag::Block => {},
-
-                // Tag::Parent => {},
-
-                // Tag::Partial => {},
-                Tag::Content => {
-                    // self.writer.write_escape(node.text, Escape::None)?;
+                    if !found && self.raise {
+                        return Ok(()); // Err(RenderError::MissingVariable(node.start, node.key.into()));
+                    }
                 },
 
-                _ => {},
+                Tag::Section => {
+                    self.stack.render_stack_section(
+                        node.key,
+                        self.slice(index..index + node.children),
+                        writer,
+                    )?;
+
+                    index += node.children;
+                },
+
+                Tag::Inverted => {
+                    self.stack.render_stack_section(
+                        node.key,
+                        self.slice(index..index + node.children).inverted(),
+                        writer,
+                    )?;
+
+                    index += node.children;
+                },
+
+                Tag::Block => {},
+
+                Tag::Parent => {},
+
+                Tag::Partial => {},
+
+                Tag::Content => {
+                    writer.write(Escape::None, node.text)?;
+                },
             }
         }
 

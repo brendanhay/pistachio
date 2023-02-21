@@ -29,13 +29,8 @@ impl Render for String {
     }
 
     #[inline]
-    fn variable(
-        &self,
-        escape: Escape,
-        _context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
-        writer.write(escape, self)
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+        writer.write(context.escape, self)
     }
 }
 
@@ -51,13 +46,8 @@ impl Render for str {
     }
 
     #[inline]
-    fn variable(
-        &self,
-        escape: Escape,
-        _context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
-        writer.write(escape, self)
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+        writer.write(context.escape, self)
     }
 }
 
@@ -73,12 +63,7 @@ impl Render for bool {
     }
 
     #[inline]
-    fn variable(
-        &self,
-        escape: Escape,
-        _context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
-        writer.write(escape, if *self { "true" } else { "false" })
+    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+        writer.write(context.escape, if *self { "true" } else { "false" })
     }
 }

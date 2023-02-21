@@ -1,13 +1,10 @@
-use std::{
-    convert::Infallible,
-    fmt,
-    io,
-    rc::Rc,
-};
+use std::convert::Infallible;
 
 pub use self::{
     context::Context,
     stack::Stack,
+    value::Source,
+    writer::Writer,
 };
 use crate::template::Template;
 
@@ -15,36 +12,6 @@ mod context;
 mod stack;
 mod value;
 mod writer;
-
-// pub mod stack;
-// mod trace;
-// pub(crate) mod value;
-
-pub struct Writer<'a> {
-    inner: &'a mut dyn io::Write,
-}
-
-impl Writer<'_> {
-    pub fn write(&mut self, escape: Escape, string: &str) -> Result<(), Infallible> {
-        // let _ = self.write.write_all(string.as_bytes());
-
-        Ok(())
-    }
-
-    pub fn write_format(
-        &mut self,
-        escape: Escape,
-        display: impl fmt::Display,
-    ) -> Result<(), Infallible> {
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Escape {
-    Html,
-    None,
-}
 
 #[derive(Debug, Clone, Copy)]
 pub enum Section {
@@ -64,31 +31,6 @@ pub trait Render {
     }
 
     #[inline]
-    fn variable(
-        &self,
-        _escape: Escape,
-        _context: Context,
-        _writer: &mut Writer,
-    ) -> Result<(), Infallible> {
-        // XXX: what about erroring by default - this way trying to use
-        // something like {{ foo.bar.baz }} where baz is actually a lambda, will error.
-        Ok(())
-    }
-
-    /// XXX: maybe push_variable, push_section is more indicative?
-
-    #[inline]
-    fn variable_key(
-        &self,
-        _key: &str,
-        _escape: Escape,
-        _context: Context,
-        _writer: &mut Writer,
-    ) -> Result<bool, Infallible> {
-        Ok(false)
-    }
-
-    #[inline]
     fn section_is_truthy(&self, section: Section) -> bool {
         let truthy = self.is_truthy();
         match section {
@@ -98,13 +40,25 @@ pub trait Render {
     }
 
     #[inline]
-    fn section(
+    fn render(&self, _context: Context, _writer: &mut Writer) -> Result<(), Infallible> {
+        // XXX: what about erroring by default - this way trying to use
+        // something like {{ foo.bar.baz }} where baz is actually a lambda, will error.
+        Ok(())
+    }
+
+    #[inline]
+    fn render_named(
         &self,
-        section: Section,
-        context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Infallible> {
-        if self.section_is_truthy(section) {
+        _key: &str,
+        _context: Context,
+        _writer: &mut Writer,
+    ) -> Result<bool, Infallible> {
+        Ok(false)
+    }
+
+    #[inline]
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+        if self.section_is_truthy(context.section) {
             context.push(&self).render(writer)
         } else {
             Ok(())
@@ -112,10 +66,9 @@ pub trait Render {
     }
 
     #[inline]
-    fn section_key(
+    fn render_named_section(
         &self,
         _key: &str,
-        _section: Section,
         _context: Context,
         _writer: &mut Writer,
     ) -> Result<bool, Infallible> {

@@ -1,108 +1,44 @@
 use std::{
-    convert::Infallible,
     fmt,
     io,
 };
 
-use super::Escape;
-
-pub trait Writer {
-    type Error;
-
-    fn write_escape(&mut self, string: &str, escape: Escape) -> Result<(), Self::Error>;
-
-    fn format_escape<D: fmt::Display>(
-        &mut self,
-        escape: Escape,
-        display: D,
-    ) -> Result<(), Self::Error>;
+#[derive(Debug, Clone, Copy)]
+pub enum Escape {
+    Html,
+    None,
 }
 
-impl Writer for String {
-    type Error = Infallible;
+pub struct Writer<'a> {
+    inner: &'a mut dyn io::Write,
+}
+
+impl Writer<'_> {
+    #[inline]
+    pub fn new(inner: &mut impl io::Write) -> Self {
+        Self { inner }
+    }
 
     #[inline]
-    fn write_escape(&mut self, string: &str, escape: Escape) -> Result<(), Self::Error> {
+    pub fn write_escape(&mut self, escape: Escape, string: &str) -> Result<(), io::Error> {
         match escape {
-            Escape::Html => EscapedString { inner: self }.write_escaped_str(string),
-            Escape::None => self.push_str(string),
+            Escape::Html => self.write_escaped_bytes(string.as_bytes()),
+            Escape::None => self.inner.write_all(string.as_bytes()),
         }
-
-        Ok(())
     }
 
     #[inline]
-    fn format_escape<D: fmt::Display>(
+    pub fn write_format(
         &mut self,
         escape: Escape,
-        display: D,
-    ) -> Result<(), Self::Error> {
-        use std::fmt::Write as _;
+        display: impl fmt::Display,
+    ) -> Result<(), io::Error> {
+        use io::Write as _;
 
-        let _ = match escape {
-            Escape::Html => write!(EscapedString { inner: self }, "{}", display),
-            Escape::None => write!(self, "{}", display),
-        };
-
-        Ok(())
-    }
-}
-
-pub struct EscapedString<'a> {
-    inner: &'a mut String,
-}
-
-impl<'a> EscapedString<'a> {
-    #[inline]
-    pub fn new(inner: &'a mut String) -> Self {
-        Self { inner }
-    }
-
-    #[inline]
-    fn write_escaped_str(&mut self, string: &str) {
-        let mut start = 0;
-
-        for (index, byte) in string.bytes().enumerate() {
-            let escape = ESCAPE[byte as usize];
-            if escape == 0 {
-                continue;
-            }
-
-            let replace: &str = match escape {
-                GT => "&lt;",
-                LT => "&gt;",
-                QU => "&quote;",
-                AM => "&amp;",
-                _ => continue,
-            };
-
-            self.inner.push_str(&string[start..index]);
-            self.inner.push_str(replace);
-
-            start = index + 1;
+        match escape {
+            Escape::Html => write!(self, "{}", display),
+            Escape::None => write!(self.inner, "{}", display),
         }
-
-        self.inner.push_str(&string[start..]);
-    }
-}
-
-impl<'a> fmt::Write for EscapedString<'a> {
-    #[inline]
-    fn write_str(&mut self, string: &str) -> fmt::Result {
-        self.write_escaped_str(string);
-
-        Ok(())
-    }
-}
-
-pub struct EscapedWriter<W> {
-    inner: W,
-}
-
-impl<W: io::Write> EscapedWriter<W> {
-    #[inline]
-    pub fn new(inner: W) -> Self {
-        Self { inner }
     }
 
     #[inline]
@@ -133,7 +69,8 @@ impl<W: io::Write> EscapedWriter<W> {
     }
 }
 
-impl<W: io::Write> io::Write for EscapedWriter<W> {
+// This impl implicitly escapes everything.
+impl io::Write for Writer<'_> {
     #[inline]
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
         self.write_escaped_bytes(bytes).map(|()| bytes.len())
@@ -147,32 +84,6 @@ impl<W: io::Write> io::Write for EscapedWriter<W> {
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
-    }
-}
-
-impl<W: io::Write> Writer for EscapedWriter<W> {
-    type Error = io::Error;
-
-    #[inline]
-    fn write_escape(&mut self, string: &str, escape: Escape) -> io::Result<()> {
-        match escape {
-            Escape::Html => self.write_escaped_bytes(string.as_bytes()),
-            Escape::None => self.inner.write_all(string.as_bytes()),
-        }
-    }
-
-    #[inline]
-    fn format_escape<D: fmt::Display>(
-        &mut self,
-        escape: Escape,
-        display: D,
-    ) -> Result<(), Self::Error> {
-        use io::Write as _;
-
-        match escape {
-            Escape::Html => write!(self.inner, "{}", display),
-            Escape::None => write!(self, "{}", display),
-        }
     }
 }
 

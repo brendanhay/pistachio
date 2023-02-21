@@ -15,13 +15,8 @@ macro_rules! impl_sequence {
         }
 
         #[inline]
-        fn section(
-            &self,
-            section: Section,
-            context: Context,
-            writer: &mut Writer,
-        ) -> Result<(), Infallible> {
-            if self.section_is_truthy(section) {
+        fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Infallible> {
+            if self.section_is_truthy(context.section) {
                 for item in self.iter() {
                     if item.is_truthy() {
                         context.render(writer)?;

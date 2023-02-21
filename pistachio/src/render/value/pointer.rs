@@ -32,45 +32,41 @@ macro_rules! impl_pointers {
                 }
 
                 #[inline]
-                fn variable(
+                fn render(
                     &self,
-                    escape: Escape,
                     context: Context,
                     writer: &mut Writer,
                 ) -> Result<(), Infallible> {
-                    self.deref().variable(escape, context, writer)
+                    self.deref().render(context, writer)
                 }
 
                 #[inline]
-                fn variable_key(
+                fn render_named(
                     &self,
                     key: &str,
-                    escape: Escape,
                     context: Context,
                     writer: &mut Writer,
                 ) -> Result<bool, Infallible> {
-                    self.deref().variable_key(key, escape, context, writer)
+                    self.deref().render_named(key, context, writer)
                 }
 
                 #[inline]
-                fn section(
+                fn render_section(
                     &self,
-                    section: Section,
                     context: Context,
                     writer: &mut Writer,
                 ) -> Result<(), Infallible> {
-                    self.deref().section(section, context, writer)
+                    self.deref().render_section(context, writer)
                 }
 
                 #[inline]
-                fn section_key(
+                fn render_named_section(
                     &self,
                     key: &str,
-                    section: Section,
                     context: Context,
                     writer: &mut Writer,
                 ) -> Result<bool, Infallible> {
-                    self.deref().section_key(key, section, context, writer)
+                    self.deref().render_named_section(key, context, writer)
                 }
             }
         )*

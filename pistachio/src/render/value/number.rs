@@ -3,9 +3,7 @@ use std::convert::Infallible;
 use crate::{
     render::{
         Context,
-        Escape,
         Render,
-        Section,
         Writer,
     },
     Template,
@@ -26,13 +24,12 @@ macro_rules! impl_numbers {
                 }
 
                 #[inline]
-                fn variable(
+                fn render(
                     &self,
-                    _escape: Escape,
-                    _context: Context,
+                    context: Context,
                     writer: &mut Writer
                 ) -> Result<(), Infallible> {
-                    writer.write_format(Escape::None, self)
+                    writer.write_format(context.escape, self)
                 }
             }
         )*
@@ -57,13 +54,12 @@ macro_rules! impl_float {
                 }
 
                 #[inline]
-                fn variable(
+                fn render(
                     &self,
-                    _escape: Escape,
-                    _context: Context,
+                    context: Context,
                     writer: &mut Writer
                 ) -> Result<(), Infallible> {
-                    writer.write_format(Escape::None, self)
+                    writer.write_format(context.escape, self)
                 }
             }
         )*
