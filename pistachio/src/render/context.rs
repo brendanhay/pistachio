@@ -55,7 +55,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn render_to_string(self, capacity: usize) -> Result<String, Error> {
+    pub fn render(self, capacity: usize) -> Result<String, Error> {
         let mut buffer = Vec::with_capacity(capacity);
         let mut writer: Writer = Writer::new(&mut buffer);
 

@@ -6,30 +6,16 @@ use serde_json::{
 
 use super::map::impl_map;
 use crate::{
+    error::Error,
     render::{
-        stack,
         Context,
-        Escape,
         Render,
-        RenderError,
         Writer,
     },
     Template,
 };
 
 impl Render for Value {
-    #[inline]
-    fn is_truthy(&self) -> bool {
-        match self {
-            Value::Null => ().is_truthy(),
-            Value::Bool(b) => b.is_truthy(),
-            Value::Number(n) => n.is_truthy(),
-            Value::String(s) => s.is_truthy(),
-            Value::Array(v) => v.is_truthy(),
-            Value::Object(m) => m.is_truthy(),
-        }
-    }
-
     #[inline]
     fn size_hint(&self, template: &Template) -> usize {
         match self {
@@ -43,117 +29,130 @@ impl Render for Value {
     }
 
     #[inline]
-    fn variable<W: Writer>(
-        &self,
-        escape: Escape,
-        writer: &mut Writer
-    ) -> Result<(), Error> {
+    fn is_truthy(&self) -> bool {
         match self {
-            Value::Null => ().variable(escape, writer),
-            Value::Bool(b) => b.variable(escape, writer),
-            Value::Number(n) => n.variable(escape, writer),
-            Value::String(s) => s.variable(escape, writer),
-            Value::Array(v) => v.variable(escape, writer),
-            Value::Object(m) => m.variable(escape, writer),
+            Value::Null => ().is_truthy(),
+            Value::Bool(b) => b.is_truthy(),
+            Value::Number(n) => n.is_truthy(),
+            Value::String(s) => s.is_truthy(),
+            Value::Array(v) => v.is_truthy(),
+            Value::Object(m) => m.is_truthy(),
         }
     }
 
     #[inline]
-    fn section<S, W>(
-        &self,
-        context: Context,
-        writer: &mut Writer
-    ) -> Result<(), Error>
-    where
-        S: stack::RenderStack,
-        W: Writer,
-    {
+    fn render_escaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         match self {
-            Value::Null => ().section(context, writer),
-            Value::Bool(b) => b.section(context, writer),
-            Value::Number(n) => n.section(context, writer),
-            Value::String(s) => s.section(context, writer),
-            Value::Array(v) => v.section(context, writer),
-            Value::Object(m) => m.section(context, writer),
+            Value::Null => ().render_escaped(context, writer),
+            Value::Bool(b) => b.render_escaped(context, writer),
+            Value::Number(n) => n.render_escaped(context, writer),
+            Value::String(s) => s.render_escaped(context, writer),
+            Value::Array(v) => v.render_escaped(context, writer),
+            Value::Object(m) => m.render_escaped(context, writer),
         }
     }
 
     #[inline]
-    fn inverted_section<S, W>(
-        &self,
-        context: Context,
-        writer: &mut Writer
-    ) -> Result<(), Error>
-    where
-        S: stack::RenderStack,
-        W: Writer,
-    {
+    fn render_unescaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         match self {
-            Value::Null => ().inverted_section(context, writer),
-            Value::Bool(b) => b.inverted_section(context, writer),
-            Value::Number(n) => n.inverted_section(context, writer),
-            Value::String(s) => s.inverted_section(context, writer),
-            Value::Array(v) => v.inverted_section(context, writer),
-            Value::Object(m) => m.inverted_section(context, writer),
+            Value::Null => ().render_unescaped(context, writer),
+            Value::Bool(b) => b.render_unescaped(context, writer),
+            Value::Number(n) => n.render_unescaped(context, writer),
+            Value::String(s) => s.render_unescaped(context, writer),
+            Value::Array(v) => v.render_unescaped(context, writer),
+            Value::Object(m) => m.render_unescaped(context, writer),
         }
     }
 
     #[inline]
-    fn field_variable<W: Writer>(
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        match self {
+            Value::Null => ().render_section(context, writer),
+            Value::Bool(b) => b.render_section(context, writer),
+            Value::Number(n) => n.render_section(context, writer),
+            Value::String(s) => s.render_section(context, writer),
+            Value::Array(v) => v.render_section(context, writer),
+            Value::Object(m) => m.render_section(context, writer),
+        }
+    }
+
+    #[inline]
+    fn render_inverted(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        match self {
+            Value::Null => ().render_inverted(context, writer),
+            Value::Bool(b) => b.render_inverted(context, writer),
+            Value::Number(n) => n.render_inverted(context, writer),
+            Value::String(s) => s.render_inverted(context, writer),
+            Value::Array(v) => v.render_inverted(context, writer),
+            Value::Object(m) => m.render_inverted(context, writer),
+        }
+    }
+
+    #[inline]
+    fn render_field_escaped(
         &self,
         key: &str,
-        escape: Escape,
-        writer: &mut Writer
+        context: Context,
+        writer: &mut Writer,
     ) -> Result<bool, Error> {
         match self {
-            Value::Null => ().field_variable(key, escape, writer),
-            Value::Bool(b) => b.field_variable(key, escape, writer),
-            Value::Number(n) => n.field_variable(key, escape, writer),
-            Value::String(s) => s.field_variable(key, escape, writer),
-            Value::Array(v) => v.field_variable(key, escape, writer),
-            Value::Object(m) => m.field_variable(key, escape, writer),
+            Value::Null => ().render_field_escaped(key, context, writer),
+            Value::Bool(b) => b.render_field_escaped(key, context, writer),
+            Value::Number(n) => n.render_field_escaped(key, context, writer),
+            Value::String(s) => s.render_field_escaped(key, context, writer),
+            Value::Array(v) => v.render_field_escaped(key, context, writer),
+            Value::Object(m) => m.render_field_escaped(key, context, writer),
         }
     }
 
     #[inline]
-    fn field_section<S, W>(
+    fn render_field_unescaped(
         &self,
         key: &str,
         context: Context,
-        writer: &mut Writer
-    ) -> Result<bool, Error>
-    where
-        S: stack::RenderStack,
-        W: Writer,
-    {
+        writer: &mut Writer,
+    ) -> Result<bool, Error> {
         match self {
-            Value::Null => ().field_section(key, context, writer),
-            Value::Bool(b) => b.field_section(key, context, writer),
-            Value::Number(n) => n.field_section(key, context, writer),
-            Value::String(s) => s.field_section(key, context, writer),
-            Value::Array(v) => v.field_section(key, context, writer),
-            Value::Object(m) => m.field_section(key, context, writer),
+            Value::Null => ().render_field_unescaped(key, context, writer),
+            Value::Bool(b) => b.render_field_unescaped(key, context, writer),
+            Value::Number(n) => n.render_field_unescaped(key, context, writer),
+            Value::String(s) => s.render_field_unescaped(key, context, writer),
+            Value::Array(v) => v.render_field_unescaped(key, context, writer),
+            Value::Object(m) => m.render_field_unescaped(key, context, writer),
         }
     }
 
     #[inline]
-    fn field_inverted_section<S, W>(
+    fn render_field_section(
         &self,
         key: &str,
         context: Context,
-        writer: &mut Writer
-    ) -> Result<bool, Error>
-    where
-        S: stack::RenderStack,
-        W: Writer,
-    {
+        writer: &mut Writer,
+    ) -> Result<bool, Error> {
         match self {
-            Value::Null => ().field_inverted_section(key, context, writer),
-            Value::Bool(b) => b.field_inverted_section(key, context, writer),
-            Value::Number(n) => n.field_inverted_section(key, context, writer),
-            Value::String(s) => s.field_inverted_section(key, context, writer),
-            Value::Array(v) => v.field_inverted_section(key, context, writer),
-            Value::Object(m) => m.field_inverted_section(key, context, writer),
+            Value::Null => ().render_field_section(key, context, writer),
+            Value::Bool(b) => b.render_field_section(key, context, writer),
+            Value::Number(n) => n.render_field_section(key, context, writer),
+            Value::String(s) => s.render_field_section(key, context, writer),
+            Value::Array(v) => v.render_field_section(key, context, writer),
+            Value::Object(m) => m.render_field_section(key, context, writer),
+        }
+    }
+
+    #[inline]
+    fn render_field_inverted(
+        &self,
+        key: &str,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<bool, Error> {
+        match self {
+            Value::Null => ().render_field_inverted(key, context, writer),
+            Value::Bool(b) => b.render_field_inverted(key, context, writer),
+            Value::Number(n) => n.render_field_inverted(key, context, writer),
+            Value::String(s) => s.render_field_inverted(key, context, writer),
+            Value::Array(v) => v.render_field_inverted(key, context, writer),
+            Value::Object(m) => m.render_field_inverted(key, context, writer),
         }
     }
 }
@@ -163,19 +162,6 @@ impl Render for Map<String, Value> {
 }
 
 impl Render for Number {
-    #[inline]
-    fn is_truthy(&self) -> bool {
-        if let Some(n) = self.as_f64() {
-            n.is_truthy()
-        } else if let Some(n) = self.as_u64() {
-            n.is_truthy()
-        } else if let Some(n) = self.as_i64() {
-            n.is_truthy()
-        } else {
-            false
-        }
-    }
-
     #[inline]
     fn size_hint(&self, template: &Template) -> usize {
         if let Some(n) = self.as_f64() {
@@ -190,17 +176,26 @@ impl Render for Number {
     }
 
     #[inline]
-    fn variable<W: Writer>(
-        &self,
-        escape: Escape,
-        writer: &mut Writer
-    ) -> Result<(), Error> {
+    fn is_truthy(&self) -> bool {
         if let Some(n) = self.as_f64() {
-            n.variable(escape, writer)
+            n.is_truthy()
         } else if let Some(n) = self.as_u64() {
-            n.variable(escape, writer)
+            n.is_truthy()
         } else if let Some(n) = self.as_i64() {
-            n.variable(escape, writer)
+            n.is_truthy()
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    fn render_escaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        if let Some(n) = self.as_f64() {
+            n.render_escaped(context, writer)
+        } else if let Some(n) = self.as_u64() {
+            n.render_escaped(context, writer)
+        } else if let Some(n) = self.as_i64() {
+            n.render_escaped(context, writer)
         } else {
             Ok(())
         }

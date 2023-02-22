@@ -63,8 +63,6 @@ pub struct Builder {
 
 impl Builder {
     pub fn build(self) -> Result<Pistachio, Error> {
-        println!("{:#?}", &self);
-
         Ok(Pistachio {
             directory: self.directory.canonicalize().map_err(Error::Io)?,
             extension: self.extension,
@@ -190,7 +188,6 @@ impl Pistachio {
     }
 }
 
-#[doc(hidden)]
 pub trait Loader<'a> {
     /// Invoked as a callback by the LR parser to obtain a child template when
     /// `{{<parent}}` or `{{>partial}}` are encountered.
@@ -202,7 +199,7 @@ pub trait Loader<'a> {
     }
 }
 
-struct LoadingDisabled;
+pub struct LoadingDisabled;
 
 impl<'a> Loader<'a> for LoadingDisabled {
     fn get_template(&mut self, _name: &'a str) -> Result<&Template<'a>, Error> {

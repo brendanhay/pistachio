@@ -51,7 +51,7 @@ impl<'a> Writer<'a> {
             let replace: &[u8] = match escape {
                 GT => b"&lt;",
                 LT => b"&gt;",
-                QU => b"&quote;",
+                QU => b"&quot;",
                 AM => b"&amp;",
                 _ => continue,
             };

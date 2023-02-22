@@ -9,5 +9,5 @@ mod sequence;
 mod source;
 mod sum;
 
-// #[cfg(feature = "serde_json")]
-// mod json;
+#[cfg(feature = "serde_json")]
+mod json;

@@ -49,7 +49,7 @@ impl<'a> Template<'a> {
     }
 
     #[inline]
-    pub(crate) fn with_loader(
+    pub fn with_loader(
         source: Cow<'a, str>,
         loader: &mut dyn Loader<'a>,
     ) -> Result<Template<'a>, Error> {
@@ -88,7 +88,7 @@ impl<'a> Template<'a> {
 
         Context::new(self.raise, &self.nodes)
             .push(vars)
-            .render_to_string(capacity)
+            .render(capacity)
     }
 
     pub fn render_to_writer<T, W>(&self, vars: &T, writer: &mut W) -> Result<(), Error>
@@ -321,8 +321,6 @@ impl<'a> Name<'a> {
     ) -> Vec<Node<'a>> {
         let dots = self.tail.len();
         let children = nodes.as_ref().map(|n| n.len()).unwrap_or(0);
-
-        println!("{:?} {:?} {:?}", self, parent_tag, target_tag);
 
         iter::once(self.head)
             .chain(self.tail.into_iter())

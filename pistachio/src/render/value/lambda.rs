@@ -53,7 +53,7 @@ macro_rules! impl_arity_string {
             impl<T: Render> Render for $ty {
                 #[inline]
                 fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-                    let source = context.render_to_string(8)?;
+                    let source = context.render(8)?;
                     let result = self(source);
                     if result.is_truthy() {
                         context.push(&result).render_to_writer(writer)?;
