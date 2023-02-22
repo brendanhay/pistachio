@@ -1,7 +1,7 @@
 //! Pistachio uses a [LALR parser] that requires the [mustache] grammar to be unambigous
 //! and [context-free]. In order to achieve this while keeping the parsing productions
-//! simple, this lexer tokenizes the source and switches between lexer modes as enter
-//! `{{` and exit `}}` tags are encountered in the source.
+//! simple, this lexer tokenizes the source and switches between lexer modes as enter `{{`
+//! and exit `}}` tags are encountered in the source.
 //!
 //! You can think of this as multiple sub-lexers that are context-aware and produce
 //! different token streams depending on whether the raw text or the text between
@@ -15,9 +15,6 @@
 //! * No regexes - ie. no regex crate, see above.
 //! * Better error messages.
 //! * Support mustache's [Set Delimiter] feature.
-//!
-//! Note: to simplify the production rules and keep things context free,
-//! a custom lexer is used - see [`crate::parser::Lexer`].
 //!
 //! [lalr parser]: https://en.wikipedia.org/wiki/LALR_parser
 //! [context-free]: https://en.wikipedia.org/wiki/Deterministic_context-free_language
