@@ -67,6 +67,8 @@
           src = self;
           hooks = {
             nixpkgs-fmt.enable = true;
+            shellcheck.enable = true;
+            shfmt.enable = true;
 
             clippy = {
               enable = false;
