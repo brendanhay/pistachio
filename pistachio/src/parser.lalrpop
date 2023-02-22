@@ -19,27 +19,28 @@ grammar<'a>(size_hint: &mut usize, loader: &mut dyn Loader<'a>, source: &'a str)
 // Tokens
 
 extern {
-  type Location = usize;
-  type Error    = Error;
+    type Location = usize;
+    type Error    = Error;
 
-  enum Token<'a> {
-    "IDENT"   => Token::Ident(<&'a str>),
-    "STRING"  => Token::String(<&'a str>),
-    "CONTENT" => Token::Content(<&'a str>),
-    "{{"      => Token::Enter(<&'a str>),
-    "}}"      => Token::Leave(<&'a str>),
-    "&"       => Token::Ampersand,
-    "#"       => Token::Hash,
-    "^"       => Token::Caret,
-    "/"       => Token::Slash,
-    ">"       => Token::Greater,
-    "<"       => Token::Less,
-    "$"       => Token::Dollar,
-    "!"       => Token::Bang,
-    "*"       => Token::Asterisk,
-    "."       => Token::Period,
-    "="       => Token::Equals,
-  }
+    enum Token<'a> {
+        "IDENT"   => Token::Ident(<&'a str>),
+        "STRING"  => Token::String(<&'a str>),
+        "CONTENT" => Token::Content(<&'a str>),
+        "{{"      => Token::Enter(<&'a str>),
+        "}}"      => Token::Leave(<&'a str>),
+        "&"       => Token::Ampersand,
+        "#"       => Token::Hash,
+        "^"       => Token::Caret,
+        "/"       => Token::RSlash,
+        "<"       => Token::LAngle,
+        ">"       => Token::RAngle,
+        "{"       => Token::LBrace,
+        "$"       => Token::Dollar,
+        "!"       => Token::Bang,
+        "*"       => Token::Asterisk,
+        "."       => Token::Period,
+        "="       => Token::Equals,
+    }
 }
 
 // Productions
@@ -121,6 +122,7 @@ Closing: &'a str = {
 }
 
 Variable: Vec<Node<'a>> = {
+    "{{" "{" <name:Name> "}}" => name.unescaped(),
     "{{" "&" <name:Name> "}}" => name.unescaped(),
     "{{"     <name:Name> "}}" => name.escaped(),
 }
@@ -142,7 +144,7 @@ Name: Name<'a> = {
     },
 
     <start:@L> "." => {
-        Name::new(Key::new(start, "<reserved:dot>"), Vec::new())
+        Name::new(Key::dot(start), Vec::new())
     }
 }
 

@@ -47,6 +47,11 @@ impl Render for String {
     fn render_escaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
         writer.write_escaped(self)
     }
+
+    #[inline]
+    fn render_unescaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
+        writer.write_unescaped(self)
+    }
 }
 
 impl Render for str {
@@ -63,5 +68,10 @@ impl Render for str {
     #[inline]
     fn render_escaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
         writer.write_escaped(self)
+    }
+
+    #[inline]
+    fn render_unescaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
+        writer.write_unescaped(self)
     }
 }

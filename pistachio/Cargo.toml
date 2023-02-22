@@ -14,7 +14,7 @@ lalrpop-util = { version = "0.19", default-features = false }
 
 # Optional
 ahash = { version = "0.8", default-features = false }
-pistachio-derive = { version = "0.1", optional = true }
+pistachio-derive = { version = "0.1", optional = true, path = "../pistachio-derive" }
 serde_json = { version = "1", optional = true }
 
 [build-dependencies]

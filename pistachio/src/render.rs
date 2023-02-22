@@ -6,7 +6,10 @@ pub use self::{
 };
 use crate::{
     error::Error,
-    template::Template,
+    template::{
+        Key,
+        Template,
+    },
 };
 
 mod context;
@@ -58,40 +61,56 @@ pub trait Render {
     #[inline]
     fn render_field_escaped(
         &self,
-        _key: &str,
-        _context: Context,
-        _writer: &mut Writer,
+        key: &str,
+        context: Context,
+        writer: &mut Writer,
     ) -> Result<bool, Error> {
-        Ok(false)
+        if key == Key::DOT {
+            self.render_escaped(context, writer).map(|_| true)
+        } else {
+            Ok(false)
+        }
     }
 
     #[inline]
     fn render_field_unescaped(
         &self,
-        _key: &str,
-        _context: Context,
-        _writer: &mut Writer,
+        key: &str,
+        context: Context,
+        writer: &mut Writer,
     ) -> Result<bool, Error> {
-        Ok(false)
+        if key == Key::DOT {
+            self.render_unescaped(context, writer).map(|_| true)
+        } else {
+            Ok(false)
+        }
     }
 
     #[inline]
     fn render_field_section(
         &self,
-        _key: &str,
-        _context: Context,
-        _writer: &mut Writer,
+        key: &str,
+        context: Context,
+        writer: &mut Writer,
     ) -> Result<bool, Error> {
-        Ok(false)
+        if key == Key::DOT {
+            self.render_section(context, writer).map(|_| true)
+        } else {
+            Ok(false)
+        }
     }
 
     #[inline]
     fn render_field_inverted(
         &self,
-        _key: &str,
-        _context: Context,
-        _writer: &mut Writer,
+        key: &str,
+        context: Context,
+        writer: &mut Writer,
     ) -> Result<bool, Error> {
-        Ok(false)
+        if key == Key::DOT {
+            self.render_inverted(context, writer).map(|_| true)
+        } else {
+            Ok(false)
+        }
     }
 }

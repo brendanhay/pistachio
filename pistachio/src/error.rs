@@ -27,6 +27,9 @@ pub enum Error {
 
     /// Tried to serialize a number bigger than the maximum allowable value for its type.
     NumberOutOfRange,
+
+    /// A variable wasn't found on the stack and raising errors is enabled.
+    MissingVariable((usize, usize), Box<str>),
 }
 
 impl fmt::Display for Error {
@@ -40,6 +43,11 @@ impl fmt::Display for Error {
             Error::InvalidPartial(msg) => write!(f, "partial path {} is invalid", msg),
             Error::KeyMustBeAString => f.write_str("key must be a string"),
             Error::NumberOutOfRange => f.write_str("number out of range"),
+            Error::MissingVariable(span, var) => write!(
+                f,
+                "missing variable `{{{{{}}}}}` at position {:?}",
+                var, span
+            ),
         }
     }
 }

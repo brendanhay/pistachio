@@ -32,11 +32,12 @@ pub enum Token<'a> {
     Content(&'a str), // Raw textual content outside any tags.
     Enter(&'a str),   // `{{` tag start
     Leave(&'a str),   // `}}` tag end
-    Slash,            // `/`
+    RSlash,           // `/`
     Hash,             // #
     Caret,            // ^
-    Greater,          // >
-    Less,             // <
+    LAngle,           // <
+    RAngle,           // >
+    LBrace,           // {
     Dollar,           // $
     Bang,             // !
     Ampersand,        // &
@@ -49,12 +50,6 @@ use std::fmt;
 
 use Token::*;
 
-impl Token<'_> {
-    pub fn skip_whitespace(&self) -> bool {
-        !matches!(self, Leave(..) | Period)
-    }
-}
-
 impl fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -63,11 +58,12 @@ impl fmt::Display for Token<'_> {
             Ident(s) => write!(f, "{}", s),
             String(s) => write!(f, "{}", s),
             Content(s) => write!(f, "{}", s),
-            Slash => write!(f, "/"),
+            RSlash => write!(f, "/"),
             Hash => write!(f, "#"),
             Caret => write!(f, "^"),
-            Greater => write!(f, ">"),
-            Less => write!(f, "<"),
+            LAngle => write!(f, "<"),
+            RAngle => write!(f, ">"),
+            LBrace => write!(f, "{{"),
             Dollar => write!(f, "$"),
             Bang => write!(f, "!"),
             Ampersand => write!(f, "&"),
@@ -95,6 +91,7 @@ pub struct Lexer<'a> {
     position: usize,
     mode: Mode,
     previous: Option<Token<'a>>,
+    triple_escaped: bool,
 }
 
 impl<'a> Iterator for Lexer<'a> {
@@ -112,6 +109,7 @@ impl<'a> Lexer<'a> {
             position: 0,
             mode: Mode::Content,
             previous: None,
+            triple_escaped: false,
         }
     }
 
@@ -138,6 +136,7 @@ impl<'a> Lexer<'a> {
 
         // It's the parser that skips comments since it provides better
         // error message when end }} delimiters aren't balanced.
+
         let start = self.position;
         let token = match self.mode {
             Mode::Content => {
@@ -150,18 +149,24 @@ impl<'a> Lexer<'a> {
 
             Mode::Control => {
                 scan! {
-                    self.token("}}", Leave)
-                    self.token("/",  |_| Slash)
+                    if self.triple_escaped {
+                        self.token("}}}", Leave)
+                    } else {
+                        self.token("}}", Leave)
+                    }
+
+                    self.token("/",  |_| RSlash)
                     self.token("#",  |_| Hash)
                     self.token("^",  |_| Caret)
-                    self.token(">",  |_| Greater)
-                    self.token("<",  |_| Less)
+                    self.token("<",  |_| LAngle)
+                    self.token(">",  |_| RAngle)
                     self.token("$",  |_| Dollar)
-                    self.token("&",  |_| Ampersand)
                     self.token("*",  |_| Asterisk)
                     self.token(".",  |_| Period)
                     self.token("=",  |_| Equals)
                     self.token("!",  |_| Bang)
+                    self.token("&",  |_| Ampersand)
+                    self.token("{",  |_| LBrace)
                     self.until(&['.', ' ', '{', '}'], Ident)
                 }
             },
@@ -177,7 +182,7 @@ impl<'a> Lexer<'a> {
         // Get the position before we skip trailing whitespace.
         let end = self.position;
 
-        if token.skip_whitespace() {
+        if !matches!(token, Leave(..) | Period) {
             self.skip_whitespace();
         }
 
@@ -192,15 +197,20 @@ impl<'a> Lexer<'a> {
             },
             // }}
             Leave(..) => {
+                self.triple_escaped = false;
                 self.mode = Mode::Content;
             },
             // {{/ | {{!
-            Slash | Bang if enter => {
+            RSlash | Bang if enter => {
                 self.mode = Mode::Literal;
             },
             // {{> | {{<
-            Greater | Less if enter && !dynamic => {
+            RAngle | LAngle if enter && !dynamic => {
                 self.mode = Mode::Literal;
+            },
+            // {{{
+            LBrace if enter => {
+                self.triple_escaped = true;
             },
             // *
             _ => {},
@@ -276,4 +286,27 @@ impl<'a> Lexer<'a> {
 
         self.position += count;
     }
+
+    // /// Skip trailing newlines, updating the position.
+    // fn skip_newlines(&mut self) {
+    //     let mut count = 0usize;
+
+    //     self.source = self.source.trim_start_matches(|c: char| {
+    //         let ws = c == '\r' || c == '\n';
+    //         count += 1;
+    //         ws
+    //     });
+
+    //     self.position += count;
+    // }
+}
+
+#[test]
+fn print_tokens() {
+    let source = "{{#bool}}\n* first\n{{/bool}}\n* {{two}}\n{{#bool}}\n* third\n{{/bool}}\n";
+
+    let lexer = Lexer::new(source);
+    let tokens = lexer.collect::<Vec<_>>();
+
+    println!("{:#?}", tokens);
 }

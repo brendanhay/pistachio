@@ -148,7 +148,8 @@ pub struct Node<'a> {
     pub tag: Tag,
     pub key: &'a str,
     pub text: &'a str,
-    data: u64,
+    start: usize,
+    children: u32,
 }
 
 impl<'a> Node<'a> {
@@ -157,7 +158,8 @@ impl<'a> Node<'a> {
             tag,
             key: key.ident,
             text,
-            data: Self::pack(key.start, children),
+            start: key.start,
+            children: children as u32,
         }
     }
 
@@ -166,7 +168,8 @@ impl<'a> Node<'a> {
             tag: Tag::Content,
             key: "",
             text,
-            data: Self::pack(start, 0),
+            start,
+            children: 0,
         }
     }
 
@@ -177,25 +180,25 @@ impl<'a> Node<'a> {
     }
 
     pub fn span(&self) -> (usize, usize) {
-        let start = (self.data >> 32) as usize;
-        (start, start + self.key.len())
+        // let start = (self.data >> 32) as usize;
+        (self.start, self.start + self.key.len())
     }
 
     pub fn children(&self) -> u32 {
-        self.data as u32
+        self.children
     }
 
-    fn pack(start: usize, children: usize) -> u64 {
-        // The span is potentially truncated since it's only used for
-        // error messages and this lets us avoid storing 2 u64 on x64.
-        let hi = start as u64;
+    // fn pack(start: usize, children: usize) -> u64 {
+    //     // The span is potentially truncated since it's only used for
+    //     // error messages and this lets us avoid storing 2 u64 on x64.
+    //     let hi = start as u64;
 
-        // Potentially truncate the number of children to u32 since
-        // we'll be doing (usize - u32) arthimetic with it.
-        let lo = children as u32;
+    //     // Potentially truncate the number of children to u32 since
+    //     // we'll be doing (usize - u32) arthimetic with it.
+    //     let lo = children as u32;
 
-        hi << 32 | (lo as u64)
-    }
+    //     hi << 32 | (lo as u64)
+    // }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -233,8 +236,17 @@ pub struct Key<'a> {
 }
 
 impl<'a> Key<'a> {
+    pub const DOT: &'static str = ".";
+
     pub fn new(start: usize, ident: &'a str) -> Self {
         Self { start, ident }
+    }
+
+    pub fn dot(start: usize) -> Self {
+        Self {
+            start,
+            ident: Self::DOT,
+        }
     }
 }
 

@@ -77,14 +77,14 @@ impl<'a> Context<'a> {
                 Tag::Escaped => {
                     let found = self.stack.render_field_escaped(node.key, self, writer)?;
                     if !found && self.raise {
-                        return Ok(()); // Err(RenderError::MissingVariable(node.start, node.key.into()));
+                        return Err(Error::MissingVariable(node.span(), node.key.into()));
                     }
                 },
 
                 Tag::Unescaped => {
-                    let found = self.stack.render_field_escaped(node.key, self, writer)?;
+                    let found = self.stack.render_field_unescaped(node.key, self, writer)?;
                     if !found && self.raise {
-                        return Ok(()); // Err(RenderError::MissingVariable(node.start, node.key.into()));
+                        return Err(Error::MissingVariable(node.span(), node.key.into()));
                     }
                 },
 

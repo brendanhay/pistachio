@@ -1,8 +1,8 @@
 [workspace]
 members = ["pistachio", "pistachio-derive", "tests"]
 
-[patch.crates-io]
-pistachio-derive = { path = "./pistachio-derive" }
+# [patch.crates-io]
+# pistachio-derive = { path = "./pistachio-derive" }
 
 [profile.bench]
 lto = "fat"
