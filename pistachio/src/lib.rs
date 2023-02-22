@@ -14,14 +14,15 @@ use std::{
     },
 };
 
-#[cfg(feature = "macros")]
-pub use pistachio_macros::Render;
+#[cfg(feature = "derive")]
+pub use pistachio_derive::Render;
 
 // #[cfg(feature = "serde_json")]
 // pub use serde_json::{
 //     json,
 //     Value,
 // };
+//
 pub use self::{
     error::Error,
     map::Map,
@@ -194,6 +195,11 @@ pub trait Loader<'a> {
     /// Invoked as a callback by the LR parser to obtain a child template when
     /// `{{<parent}}` or `{{>partial}}` are encountered.
     fn get_template(&mut self, name: &'a str) -> Result<&Template<'a>, Error>;
+
+    /// If missing `{{foo}}` variables should raise an error.
+    fn raise(&self) -> bool {
+        false
+    }
 }
 
 struct LoadingDisabled;
@@ -203,6 +209,7 @@ impl<'a> Loader<'a> for LoadingDisabled {
         Err(Error::LoadingDisabled)
     }
 }
+
 impl Loader<'static> for Pistachio {
     fn get_template(&mut self, name: &'static str) -> Result<&Template<'static>, Error> {
         if !self.templates.contains_key(name) {
@@ -210,5 +217,9 @@ impl Loader<'static> for Pistachio {
         }
 
         Ok(&self.templates[name])
+    }
+
+    fn raise(&self) -> bool {
+        self.raise
     }
 }

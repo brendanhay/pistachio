@@ -23,9 +23,18 @@ impl<T: Render> Render for Option<T> {
     }
 
     #[inline]
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+    fn render_escaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         if let Some(inner) = self {
-            inner.render(context, writer)?;
+            inner.render_escaped(context, writer)?;
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    fn render_unescaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        if let Some(inner) = self {
+            inner.render_unescaped(context, writer)?;
         }
 
         Ok(())
@@ -56,9 +65,18 @@ impl<T: Render, E> Render for Result<T, E> {
     }
 
     #[inline]
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+    fn render_escaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         if let Ok(inner) = self {
-            inner.render(context, writer)?;
+            inner.render_escaped(context, writer)?;
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    fn render_unescaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        if let Ok(inner) = self {
+            inner.render_unescaped(context, writer)?;
         }
 
         Ok(())

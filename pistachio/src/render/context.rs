@@ -1,14 +1,7 @@
 use std::ops::Range;
 
 use super::{
-    writer::Escape,
-    // stack::{
-    //     PushStack,
-    //     RenderStack,
-    // },
-    // writer::Writer,
     Render,
-    Section,
     Stack,
     Writer,
 };
@@ -25,18 +18,14 @@ use crate::{
 pub struct Context<'a> {
     stack: Stack<'a>,
     nodes: &'a [Node<'a>],
-    pub section: Section,
-    pub escape: Escape,
-    pub raise: bool,
+    raise: bool,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(nodes: &'a [Node<'a>], raise: bool) -> Self {
+    pub fn new(raise: bool, nodes: &'a [Node<'a>]) -> Self {
         Self {
             stack: Stack::new(),
             nodes,
-            section: Section::Positive,
-            escape: Escape::Html,
             raise,
         }
     }
@@ -66,20 +55,6 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn inverted(self) -> Self {
-        Self {
-            section: Section::Negative,
-            ..self
-        }
-    }
-
-    fn unescaped(self) -> Self {
-        Self {
-            escape: Escape::None,
-            ..self
-        }
-    }
-
     pub fn render_to_string(self, capacity: usize) -> Result<String, Error> {
         let mut buffer = Vec::with_capacity(capacity);
         let mut writer: Writer = Writer::new(&mut buffer);
@@ -100,41 +75,39 @@ impl<'a> Context<'a> {
 
             match node.tag {
                 Tag::Escaped => {
-                    let found = self.stack.render_stack(node.key, self, writer)?;
-
+                    let found = self.stack.render_field_escaped(node.key, self, writer)?;
                     if !found && self.raise {
                         return Ok(()); // Err(RenderError::MissingVariable(node.start, node.key.into()));
                     }
                 },
 
                 Tag::Unescaped => {
-                    let found = self
-                        .stack
-                        .render_stack(node.key, self.unescaped(), writer)?;
-
+                    let found = self.stack.render_field_escaped(node.key, self, writer)?;
                     if !found && self.raise {
                         return Ok(()); // Err(RenderError::MissingVariable(node.start, node.key.into()));
                     }
                 },
 
                 Tag::Section => {
-                    self.stack.render_stack_section(
+                    let children = node.children() as usize;
+                    self.stack.render_field_section(
                         node.key,
-                        self.slice(index..index + node.children),
+                        self.slice(index..index + children),
                         writer,
                     )?;
 
-                    index += node.children;
+                    index += children;
                 },
 
                 Tag::Inverted => {
-                    self.stack.render_stack_section(
+                    let children = node.children() as usize;
+                    self.stack.render_field_inverted(
                         node.key,
-                        self.slice(index..index + node.children).inverted(),
+                        self.slice(index..index + children),
                         writer,
                     )?;
 
-                    index += node.children;
+                    index += children;
                 },
 
                 Tag::Block => {},
@@ -144,7 +117,7 @@ impl<'a> Context<'a> {
                 Tag::Partial => {},
 
                 Tag::Content => {
-                    writer.write(Escape::None, node.text)?;
+                    writer.write_unescaped(node.text)?;
                 },
             }
         }

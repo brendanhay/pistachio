@@ -27,21 +27,8 @@ macro_rules! impl_map {
         }
 
         #[inline]
-        fn render_named(
-            &self,
-            key: &str,
-            context: Context,
-            writer: &mut Writer,
-        ) -> Result<bool, Error> {
-            match self.get(key) {
-                Some(v) => v.render(context, writer).map(|_| true),
-                None => Ok(false),
-            }
-        }
-
-        #[inline]
         fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-            if self.section_is_truthy(context.section) {
+            if self.is_truthy() {
                 context.push(self).render_to_writer(writer)
             } else {
                 Ok(())
@@ -49,7 +36,33 @@ macro_rules! impl_map {
         }
 
         #[inline]
-        fn render_named_section(
+        fn render_field_escaped(
+            &self,
+            key: &str,
+            context: Context,
+            writer: &mut Writer,
+        ) -> Result<bool, Error> {
+            match self.get(key) {
+                Some(v) => v.render_escaped(context, writer).map(|_| true),
+                None => Ok(false),
+            }
+        }
+
+        #[inline]
+        fn render_field_unescaped(
+            &self,
+            key: &str,
+            context: Context,
+            writer: &mut Writer,
+        ) -> Result<bool, Error> {
+            match self.get(key) {
+                Some(v) => v.render_unescaped(context, writer).map(|_| true),
+                None => Ok(false),
+            }
+        }
+
+        #[inline]
+        fn render_field_section(
             &self,
             key: &str,
             context: Context,
@@ -57,6 +70,19 @@ macro_rules! impl_map {
         ) -> Result<bool, Error> {
             match self.get(key) {
                 Some(v) => v.render_section(context, writer).map(|_| true),
+                None => Ok(false),
+            }
+        }
+
+        #[inline]
+        fn render_field_inverted(
+            &self,
+            key: &str,
+            context: Context,
+            writer: &mut Writer,
+        ) -> Result<bool, Error> {
+            match self.get(key) {
+                Some(v) => v.render_inverted(context, writer).map(|_| true),
                 None => Ok(false),
             }
         }

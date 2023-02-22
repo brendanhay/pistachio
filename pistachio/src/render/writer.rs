@@ -5,12 +5,6 @@ use std::{
 
 use crate::error::Error;
 
-#[derive(Debug, Clone, Copy)]
-pub enum Escape {
-    Html,
-    None,
-}
-
 pub struct Writer<'a> {
     inner: &'a mut dyn io::Write,
 }
@@ -22,23 +16,26 @@ impl<'a> Writer<'a> {
     }
 
     #[inline]
-    pub fn write(&mut self, escape: Escape, string: &str) -> Result<(), Error> {
-        match escape {
-            Escape::Html => self.write_escaped_bytes(string.as_bytes()),
-            Escape::None => self.inner.write_all(string.as_bytes()),
-        }
-        .map_err(Error::Io)
+    pub fn write_escaped(&mut self, string: &str) -> Result<(), Error> {
+        self.write_escaped_bytes(string.as_bytes())
+            .map_err(Error::Io)
     }
 
     #[inline]
-    pub fn format(&mut self, escape: Escape, display: impl fmt::Display) -> Result<(), Error> {
+    pub fn write_unescaped(&mut self, string: &str) -> Result<(), Error> {
+        self.inner.write_all(string.as_bytes()).map_err(Error::Io)
+    }
+
+    #[inline]
+    pub fn format_escaped(&mut self, display: impl fmt::Display) -> Result<(), Error> {
         use io::Write as _;
 
-        match escape {
-            Escape::Html => write!(self, "{}", display),
-            Escape::None => write!(self.inner, "{}", display),
-        }
-        .map_err(Error::Io)
+        write!(self, "{}", display).map_err(Error::Io)
+    }
+
+    #[inline]
+    pub fn format_unescaped(&mut self, display: impl fmt::Display) -> Result<(), Error> {
+        write!(self.inner, "{}", display).map_err(Error::Io)
     }
 
     #[inline]
@@ -83,7 +80,7 @@ impl io::Write for Writer<'_> {
 
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
-        Ok(())
+        self.inner.flush()
     }
 }
 

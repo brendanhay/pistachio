@@ -23,12 +23,12 @@ macro_rules! impl_numbers {
                 }
 
                 #[inline]
-                fn render(
+                fn render_escaped(
                     &self,
-                    context: Context,
+                    _context: Context,
                     writer: &mut Writer
                 ) -> Result<(), Error> {
-                    writer.format(context.escape, self)
+                    writer.format_unescaped(self)
                 }
             }
         )*
@@ -53,12 +53,12 @@ macro_rules! impl_float {
                 }
 
                 #[inline]
-                fn render(
+                fn render_escaped(
                     &self,
-                    context: Context,
+                    _context: Context,
                     writer: &mut Writer
                 ) -> Result<(), Error> {
-                    writer.format(context.escape, self)
+                    writer.format_unescaped(self)
                 }
             }
         )*

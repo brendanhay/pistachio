@@ -22,8 +22,8 @@ use crate::{
 /// Represents a parsed and normalised template.
 #[derive(Debug)]
 pub struct Template<'a> {
-    pub(crate) size_hint: usize, // XXX: these are exposed to the grammar
-    pub(crate) nodes: Vec<Node<'a>>,
+    size_hint: usize, // XXX: these are exposed to the grammar
+    nodes: Vec<Node<'a>>,
     source: Cow<'a, str>,
     raise: bool,
 }
@@ -44,17 +44,22 @@ impl<'a> Template<'a> {
         &self.source
     }
 
+    pub(crate) fn nodes(&self) -> &[Node] {
+        &self.nodes
+    }
+
     #[inline]
     pub(crate) fn with_loader(
         source: Cow<'a, str>,
         loader: &mut dyn Loader<'a>,
     ) -> Result<Template<'a>, Error> {
+        let raise = loader.raise();
         if source.is_empty() {
             return Ok(Template {
                 size_hint: 0,
                 nodes: Vec::new(),
                 source,
-                raise: true,
+                raise,
             });
         }
 
@@ -68,7 +73,7 @@ impl<'a> Template<'a> {
             size_hint,
             nodes,
             source,
-            raise: true,
+            raise,
         })
     }
 
@@ -81,7 +86,7 @@ impl<'a> Template<'a> {
         // Add 25% for escaping and various expansions.
         capacity += capacity / 4;
 
-        Context::new(&self.nodes, self.raise)
+        Context::new(self.raise, &self.nodes)
             .push(vars)
             .render_to_string(capacity)
     }
@@ -93,7 +98,7 @@ impl<'a> Template<'a> {
     {
         let mut writer = Writer::new(writer);
 
-        Context::new(&self.nodes, self.raise)
+        Context::new(self.raise, &self.nodes)
             .push(&vars)
             .render_to_writer(&mut writer)?;
 
@@ -110,7 +115,7 @@ impl<'a> Template<'a> {
             .iter()
             .enumerate()
             .filter_map(|(i, node)| match node.tag {
-                Tag::Block => Some((node.key, (i, node.children))),
+                Tag::Block => Some((node.key, (i, node.children()))),
                 _ => None,
             })
             .collect();
@@ -121,7 +126,7 @@ impl<'a> Template<'a> {
                 // found in `nodes`. Any blocks that aren't overriden are preserved.
                 Tag::Block => {
                     if let Some((index, next)) = blocks.remove(node.key) {
-                        buffer.extend_from_slice(&nodes[index..next]);
+                        buffer.extend_from_slice(&nodes[index..next as usize]);
                     } else {
                         buffer.push(node.clone());
                     }
@@ -141,37 +146,55 @@ impl<'a> Template<'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct Node<'a> {
     pub tag: Tag,
-    pub start: usize,
     pub key: &'a str,
     pub text: &'a str,
-    pub children: usize,
+    data: u64,
 }
 
 impl<'a> Node<'a> {
     fn new(tag: Tag, key: Key<'a>, text: &'a str, children: usize) -> Self {
         Self {
             tag,
-            start: key.start,
             key: key.ident,
             text,
-            children,
+            data: Self::pack(key.start, children),
         }
     }
 
-    pub fn content(start: usize, text: &'a str) -> Self {
+    pub fn new_content(start: usize, text: &'a str) -> Self {
         Node {
             tag: Tag::Content,
-            start,
             key: "",
             text,
-            children: 0,
+            data: Self::pack(start, 0),
         }
     }
 
-    pub fn block(key: Key<'a>, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
+    pub fn new_block(key: Key<'a>, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
         iter::once(Node::new(Tag::Block, key, "", nodes.len()))
             .chain(nodes)
             .collect()
+    }
+
+    pub fn span(&self) -> (usize, usize) {
+        let start = (self.data >> 32) as usize;
+        (start, start + self.key.len())
+    }
+
+    pub fn children(&self) -> u32 {
+        self.data as u32
+    }
+
+    fn pack(start: usize, children: usize) -> u64 {
+        // The span is potentially truncated since it's only used for
+        // error messages and this lets us avoid storing 2 u64 on x64.
+        let hi = start as u64;
+
+        // Potentially truncate the number of children to u32 since
+        // we'll be doing (usize - u32) arthimetic with it.
+        let lo = children as u32;
+
+        hi << 32 | (lo as u64)
     }
 }
 

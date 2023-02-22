@@ -14,12 +14,6 @@ mod stack;
 mod value;
 mod writer;
 
-#[derive(Debug, Clone, Copy)]
-pub enum Section {
-    Positive,
-    Negative,
-}
-
 pub trait Render {
     #[inline]
     fn size_hint(&self, _template: &Template) -> usize {
@@ -32,23 +26,37 @@ pub trait Render {
     }
 
     #[inline]
-    fn section_is_truthy(&self, section: Section) -> bool {
-        let truthy = self.is_truthy();
-        match section {
-            Section::Positive => truthy,
-            Section::Negative => !truthy,
-        }
-    }
-
-    #[inline]
-    fn render(&self, _context: Context, _writer: &mut Writer) -> Result<(), Error> {
+    fn render_escaped(&self, _context: Context, _writer: &mut Writer) -> Result<(), Error> {
         // XXX: what about erroring by default - this way trying to use
         // something like {{ foo.bar.baz }} where baz is actually a lambda, will error.
         Ok(())
     }
+    fn render_unescaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        // XXX: what about erroring by default - this way trying to use
+        // something like {{ foo.bar.baz }} where baz is actually a lambda, will error.
+        self.render_escaped(context, writer)
+    }
 
     #[inline]
-    fn render_named(
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        if self.is_truthy() {
+            context.push(&self).render_to_writer(writer)
+        } else {
+            Ok(())
+        }
+    }
+
+    #[inline]
+    fn render_inverted(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        if !self.is_truthy() {
+            context.push(&self).render_to_writer(writer)
+        } else {
+            Ok(())
+        }
+    }
+
+    #[inline]
+    fn render_field_escaped(
         &self,
         _key: &str,
         _context: Context,
@@ -58,16 +66,27 @@ pub trait Render {
     }
 
     #[inline]
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-        if self.section_is_truthy(context.section) {
-            context.push(&self).render_to_writer(writer)
-        } else {
-            Ok(())
-        }
+    fn render_field_unescaped(
+        &self,
+        _key: &str,
+        _context: Context,
+        _writer: &mut Writer,
+    ) -> Result<bool, Error> {
+        Ok(false)
     }
 
     #[inline]
-    fn render_named_section(
+    fn render_field_section(
+        &self,
+        _key: &str,
+        _context: Context,
+        _writer: &mut Writer,
+    ) -> Result<bool, Error> {
+        Ok(false)
+    }
+
+    #[inline]
+    fn render_field_inverted(
         &self,
         _key: &str,
         _context: Context,

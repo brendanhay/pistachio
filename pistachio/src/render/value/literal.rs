@@ -15,6 +15,23 @@ impl Render for () {
     }
 }
 
+impl Render for bool {
+    #[inline]
+    fn is_truthy(&self) -> bool {
+        *self
+    }
+
+    #[inline]
+    fn size_hint(&self, _template: &Template) -> usize {
+        5
+    }
+
+    #[inline]
+    fn render_escaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
+        writer.write_escaped(if *self { "true" } else { "false" })
+    }
+}
+
 impl Render for String {
     #[inline]
     fn size_hint(&self, _template: &Template) -> usize {
@@ -27,8 +44,8 @@ impl Render for String {
     }
 
     #[inline]
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-        writer.write(context.escape, self)
+    fn render_escaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
+        writer.write_escaped(self)
     }
 }
 
@@ -44,24 +61,7 @@ impl Render for str {
     }
 
     #[inline]
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-        writer.write(context.escape, self)
-    }
-}
-
-impl Render for bool {
-    #[inline]
-    fn is_truthy(&self) -> bool {
-        *self
-    }
-
-    #[inline]
-    fn size_hint(&self, _template: &Template) -> usize {
-        5
-    }
-
-    #[inline]
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-        writer.write(context.escape, if *self { "true" } else { "false" })
+    fn render_escaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
+        writer.write_escaped(self)
     }
 }

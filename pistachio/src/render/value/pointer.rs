@@ -16,7 +16,7 @@ use crate::{
 };
 
 macro_rules! impl_pointers {
-    ($( $ty:ty $(: $bounds:ident)? ),*) => {
+    ( $($ty:ty $(: $bounds:ident)?),* ) => {
         $(
             impl<T: Render $(+ $bounds)? + ?Sized> Render for $ty {
                 #[inline]
@@ -30,22 +30,21 @@ macro_rules! impl_pointers {
                 }
 
                 #[inline]
-                fn render(
+                fn render_escaped(
                     &self,
                     context: Context,
                     writer: &mut Writer,
                 ) -> Result<(), Error> {
-                    self.deref().render(context, writer)
+                    self.deref().render_escaped(context, writer)
                 }
 
                 #[inline]
-                fn render_named(
+                fn render_unescaped(
                     &self,
-                    key: &str,
                     context: Context,
                     writer: &mut Writer,
-                ) -> Result<bool, Error> {
-                    self.deref().render_named(key, context, writer)
+                ) -> Result<(), Error> {
+                    self.deref().render_unescaped(context, writer)
                 }
 
                 #[inline]
@@ -58,13 +57,52 @@ macro_rules! impl_pointers {
                 }
 
                 #[inline]
-                fn render_named_section(
+                fn render_inverted(
+                    &self,
+                    context: Context,
+                    writer: &mut Writer,
+                ) -> Result<(), Error> {
+                    self.deref().render_inverted(context, writer)
+                }
+
+                #[inline]
+                fn render_field_escaped(
                     &self,
                     key: &str,
                     context: Context,
                     writer: &mut Writer,
                 ) -> Result<bool, Error> {
-                    self.deref().render_named_section(key, context, writer)
+                    self.deref().render_field_escaped(key, context, writer)
+                }
+
+                #[inline]
+                fn render_field_unescaped(
+                    &self,
+                    key: &str,
+                    context: Context,
+                    writer: &mut Writer,
+                ) -> Result<bool, Error> {
+                    self.deref().render_field_unescaped(key, context, writer)
+                }
+
+                #[inline]
+                fn render_field_section(
+                    &self,
+                    key: &str,
+                    context: Context,
+                    writer: &mut Writer,
+                ) -> Result<bool, Error> {
+                    self.deref().render_field_section(key, context, writer)
+                }
+
+                #[inline]
+                fn render_field_inverted(
+                    &self,
+                    key: &str,
+                    context: Context,
+                    writer: &mut Writer,
+                ) -> Result<bool, Error> {
+                    self.deref().render_field_inverted(key, context, writer)
                 }
             }
         )*

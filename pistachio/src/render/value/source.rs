@@ -14,9 +14,9 @@ pub struct Source {
 
 impl Render for Source {
     #[inline]
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+    fn render_escaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         let template = Template::new(&self.source)?;
-        let context = context.fork(&template.nodes);
+        let context = context.fork(template.nodes());
 
         context.render_to_writer(writer)
     }

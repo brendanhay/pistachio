@@ -6,25 +6,26 @@ edition = "2021"
 build = "build.rs"
 workspace = ".."
 readme = "../README.md"
+keywords = ["html", "template", "mustache"]
+categories = ["template-engine"]
 
 [dependencies]
-lalrpop-util = { version = "0.19", features = [] }
+lalrpop-util = { version = "0.19", default-features = false }
 
 # Optional
-ahash = { version = "0.8", optional = true }
-pistachio-macros = { version = "0.1", optional = true, path = "../pistachio-macros" }
+ahash = { version = "0.8", default-features = false }
+pistachio-derive = { version = "0.1", optional = true }
 serde_json = { version = "1", optional = true }
 
 [build-dependencies]
 lalrpop = { version = "0.19", default-features = false }
 
-[dev-dependencies]
-quickcheck = "1"
-quickcheck_macros = "1"
-
 [features]
-default = ["ahash", "macros"]
+default = ["derive"]
 
-ahash = ["dep:ahash"]
-macros = ["dep:pistachio-macros"]
+# Re-export the `Render` derive macro.
+derive = ["dep:pistachio-derive"]
+
+# Enable `Render` impls for `serde::Value` and allow the use of the `json!`
+# macro to construct variables for pistachio templates.
 serde_json = ["dep:serde_json"]

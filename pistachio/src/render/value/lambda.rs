@@ -7,83 +7,63 @@ use crate::{
     },
 };
 
-// struct Lambda {
-//     inner: dyn Fn(String) -> String + Send,
-// }
+macro_rules! impl_arity_zero {
+    ( $($ty:ty),* ) => {
+        $(
+            impl<T: Render> Render for $ty {
+                #[inline]
+                fn render_escaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+                    self().render_escaped(context, writer)
+                }
 
-/// Equivalent to the following examples:
-///
-/// * foo()
-/// * foo.bar()
-/// * foo().bar
-/// * foo.bar().baz
-///
-/// If any value found during the lookup is a callable object, such as a
-/// function or lambda, this object will be invoked with zero arguments. The
-/// value that is returned is then used instead of the callable object itself.
-///
+                #[inline]
+                fn render_unescaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+                    self().render_unescaped(context, writer)
+                }
 
-/// It looks like you need special treatment (ie. separate trait impls) based on return type.
+                #[inline]
+                fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+                    let result = self();
+                    if result.is_truthy() {
+                        context.push(&result).render_to_writer(writer)?;
+                    }
 
-/// Has the default section semantics, but needs to error if call like {{foo.bar.baz}}
-///
-/// An optional part of the specification states that if the final key in the
-/// name is a lambda that returns a string, then that string should be rendered
-/// as a Mustache template before interpolation. It will be rendered using the
-/// default delimiters (see Set Delimiter below) against the current context.
+                    Ok(())
+                }
 
-impl<T: Render> Render for fn() -> T {
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-        self().render(context, writer)
-    }
+                #[inline]
+                fn render_inverted(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+                    let result = self();
+                    if !result.is_truthy() {
+                        context.push(&result).render_to_writer(writer)?;
+                    }
 
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-        let frame = self();
-        if frame.section_is_truthy(context.section) {
-            context.push(&frame).render_to_writer(writer)?;
-        }
-
-        Ok(())
-    }
+                    Ok(())
+                }
+            }
+        )*
+    };
 }
 
-// Box<dyn Fn() -> T>
-impl<T: Render> Render for dyn Fn() -> T {
-    fn render(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-        self().render(context, writer)
-    }
+impl_arity_zero!(fn() -> T, dyn Fn() -> T);
 
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-        let frame = self();
-        if frame.section_is_truthy(context.section) {
-            context.push(&frame).render_to_writer(writer)?;
-        }
+macro_rules! impl_arity_string {
+    ( $($ty:ty),* ) => {
+        $(
+            impl<T: Render> Render for $ty {
+                #[inline]
+                fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+                    let source = context.render_to_string(8)?;
+                    let result = self(source);
+                    if result.is_truthy() {
+                        context.push(&result).render_to_writer(writer)?;
+                    }
 
-        Ok(())
-    }
+                    Ok(())
+                }
+            }
+        )*
+    };
 }
 
-impl<T: Render> Render for fn(String) -> T {
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-        let source = context.render_to_string(8)?;
-        let frame = self(source);
-        if frame.section_is_truthy(context.section) {
-            context.push(&frame).render_to_writer(writer)?;
-        }
-
-        Ok(())
-    }
-}
-
-// Box<dyn Fn(String) -> T>
-impl<T: Render> Render for dyn Fn(String) -> T {
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
-        let source = context.render_to_string(8)?;
-        let frame = self(source);
-        if frame.section_is_truthy(context.section) {
-            context.push(&frame).render_to_writer(writer)?;
-        }
-
-        Ok(())
-    }
-}
+impl_arity_string!(fn(String) -> T, dyn Fn(String) -> T);

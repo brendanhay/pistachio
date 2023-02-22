@@ -55,18 +55,18 @@ impl<'a> Stack<'a> {
     }
 
     #[inline]
-    pub fn render_stack(
+    pub fn render_field_escaped(
         &self,
         key: &str,
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        if self.a.render_named(key, context, writer)?
-            || self.b.render_named(key, context, writer)?
-            || self.c.render_named(key, context, writer)?
-            || self.d.render_named(key, context, writer)?
-            || self.e.render_named(key, context, writer)?
-            || self.f.render_named(key, context, writer)?
+        if self.a.render_field_escaped(key, context, writer)?
+            || self.b.render_field_escaped(key, context, writer)?
+            || self.c.render_field_escaped(key, context, writer)?
+            || self.d.render_field_escaped(key, context, writer)?
+            || self.e.render_field_escaped(key, context, writer)?
+            || self.f.render_field_escaped(key, context, writer)?
         {
             Ok(true)
         } else {
@@ -75,27 +75,67 @@ impl<'a> Stack<'a> {
     }
 
     #[inline]
-    pub fn render_stack_section(
+    pub fn render_field_unescaped(
+        &self,
+        key: &str,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<bool, Error> {
+        if self.a.render_field_unescaped(key, context, writer)?
+            || self.b.render_field_unescaped(key, context, writer)?
+            || self.c.render_field_unescaped(key, context, writer)?
+            || self.d.render_field_unescaped(key, context, writer)?
+            || self.e.render_field_unescaped(key, context, writer)?
+            || self.f.render_field_unescaped(key, context, writer)?
+        {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    #[inline]
+    pub fn render_field_section(
         &self,
         key: &str,
         context: Context,
         writer: &mut Writer,
     ) -> Result<(), Error> {
-        if !self.a.render_named_section(key, context, writer)? {
+        if !self.a.render_field_section(key, context, writer)? {
             let context = context.pop();
-            if !self.b.render_named_section(key, context, writer)? {
+            if !self.b.render_field_section(key, context, writer)? {
                 let context = context.pop();
-                if !self.c.render_named_section(key, context, writer)? {
+                if !self.c.render_field_section(key, context, writer)? {
                     let context = context.pop();
-                    if !self.d.render_named_section(key, context, writer)? {
+                    if !self.d.render_field_section(key, context, writer)? {
                         let context = context.pop();
-                        if !self.e.render_named_section(key, context, writer)? {
+                        if !self.e.render_field_section(key, context, writer)? {
                             let context = context.pop();
-                            self.f.render_named_section(key, context, writer)?;
+                            self.f.render_field_section(key, context, writer)?;
                         }
                     }
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    pub fn render_field_inverted(
+        &self,
+        key: &str,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Error> {
+        if !self.a.render_field_inverted(key, context, writer)?
+            && !self.b.render_field_inverted(key, context, writer)?
+            && !self.c.render_field_inverted(key, context, writer)?
+            && !self.d.render_field_inverted(key, context, writer)?
+            && !self.e.render_field_inverted(key, context, writer)?
+            && self.f.render_field_inverted(key, context, writer)?
+        {
+            context.render_to_writer(writer)?;
         }
 
         Ok(())

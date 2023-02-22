@@ -83,7 +83,7 @@ Inverted: Vec<Node<'a>> = {
 Block: Vec<Node<'a>> = {
     "{{" "$" <key:Key> "}}" <nodes:Nodes> <end:Closing> =>? {
         balanced!("$", &key, end, {
-            Ok(Node::block(key, nodes))
+            Ok(Node::new_block(key, nodes))
         })
     },
 }
@@ -98,7 +98,7 @@ Parent: Vec<Node<'a>> = {
     "{{" "<" <name:String> "}}" <nodes:Nodes> <end:Closing> =>? {
         balanced!("<", name, end, {
             let parent = loader.get_template(name)?;
-            *size_hint += parent.size_hint;
+            *size_hint += parent.size_hint();
             Ok(parent.inherit(nodes))
         })
     },
@@ -132,7 +132,7 @@ Comment: Option<Node<'a>> = {
 Content: Node<'a> = {
     <start:@L> <text:"CONTENT"> => {
         *size_hint += text.len();
-        Node::content(start, text)
+        Node::new_content(start, text)
     },
 }
 
