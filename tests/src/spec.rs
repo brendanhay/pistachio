@@ -6,12 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-use pistachio::{
-    Error,
-    Loader,
-    LoadingDisabled,
-    Pistachio,
-};
+use pistachio::Pistachio;
 use serde::Deserialize;
 use serde_json::Value;
 use tempfile::TempDir;
