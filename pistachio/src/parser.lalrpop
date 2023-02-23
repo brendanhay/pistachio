@@ -7,8 +7,8 @@
 //! [mustache]: https://jgonggrijp.gitlab.io/wontache/mustache.5.html
 
 use crate::{
-    lexer::Token,
-    parser::balanced,
+    lexer::{Token, Layout},
+    parser::{Spanned, balanced},
     template::{Key, Node, Name},
     Error,
     Loader,
@@ -23,11 +23,11 @@ extern {
     type Error    = Error;
 
     enum Token<'a> {
+        "EOF"     => Token::Eof(<&'a str>, <Layout>),
         "IDENT"   => Token::Ident(<&'a str>),
         "STRING"  => Token::String(<&'a str>),
-        "CONTENT" => Token::Content(<&'a str>),
-        "{{"      => Token::Enter(<&'a str>),
-        "}}"      => Token::Leave(<&'a str>),
+        "{{"      => Token::Enter(<&'a str>, _),
+        "}}"      => Token::Leave(_, <Layout>),
         "&"       => Token::Ampersand,
         "#"       => Token::Hash,
         "^"       => Token::Caret,
@@ -60,81 +60,84 @@ Node: Vec<Node<'a>> = {
     Parent   => <>,
     Block    => <>,
     Partial  => <>,
-    Content  => vec![<>],
-    Comment  => vec![],
     Variable => <>,
+    Comment  => vec![<>],
+    Eof      => vec![<>],
 }
 
 Section: Vec<Node<'a>> = {
-    "{{" "#" <name:Name> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!("#", &name, end, {
-            Ok(name.section(nodes))
+    <text:"{{"> "#" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+        balanced!("#", &name, &close.key, name.span(), {
+            Ok(Node::section(layout.trim(text), name, nodes, close))
         })
     },
 }
 
 Inverted: Vec<Node<'a>> = {
-    "{{" "^" <name:Name> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!("^", &name, end, {
-            Ok(name.inverted(nodes))
+    <text:"{{"> "^" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+        balanced!("^", &name, &close.key, name.span(), {
+            Ok(Node::inverted(layout.trim(text), name, nodes, close))
         })
     },
 }
 
 Block: Vec<Node<'a>> = {
-    "{{" "$" <key:Key> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!("$", &key, end, {
-            Ok(Node::new_block(key, nodes))
+    <text:"{{"> "$" <key:Key> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+        balanced!("$", &key, &close.key, key.span(), {
+            Ok(Node::block(layout.trim(text), key, nodes, close))
         })
     },
 }
 
 Parent: Vec<Node<'a>> = {
-    "{{" "<" "*" <name:Name> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!("<", &name, end, {
-            Ok(name.parent(nodes))
+    <text:"{{"> "<" "*" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+        balanced!("<", &name, &close.key, name.span(), {
+            Ok(Node::dynamic_parent(layout.trim(text), name, nodes, close))
         })
     },
 
-    "{{" "<" <name:String> "}}" <nodes:Nodes> <end:Closing> =>? {
-        balanced!("<", name, end, {
-            let parent = loader.get_template(name)?;
-            *size_hint += parent.size_hint();
-            Ok(parent.inherit(nodes))
+    <text:"{{"> "<" <start:@L> <name:String> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+        balanced!("<", &name, &close.key, (start, name).span(), {
+            let template = loader.get_template(name)?;
+            *size_hint += template.size_hint();
+            Ok(template.inherit_parent(layout.trim(text), nodes, close))
         })
     },
 }
 
 Partial: Vec<Node<'a>> = {
-    "{{" ">" "*" <name:Name> "}}" => {
-        name.partial()
+    <text:"{{"> ">" "*" <name:Name> <layout:"}}"> => {
+        Node::dynamic_partial(layout.trim(text), name)
     },
 
-    "{{" ">" <name:String> "}}" =>? {
-        let partial = loader.get_template(name)?;
-        *size_hint += partial.size_hint();
-        Ok(partial.include())
+    <text:"{{"> ">" <name:String> <layout:"}}"> =>? {
+        let template = loader.get_template(name)?;
+        *size_hint += template.size_hint();
+        Ok(template.include_partial(layout.trim(text)))
     },
 }
 
-Closing: &'a str = {
-    "{{" "/" <String> "}}" => <>,
+Closing: Node<'a> = {
+    <text:"{{"> "/" <start:@L> <name:String> <layout:"}}"> =>
+        Node::closing(layout.trim(text), name, start),
 }
 
 Variable: Vec<Node<'a>> = {
-    "{{" "{" <name:Name> "}}" => name.unescaped(),
-    "{{" "&" <name:Name> "}}" => name.unescaped(),
-    "{{"     <name:Name> "}}" => name.escaped(),
+    <text:"{{"> "{" <name:Name> "}}" => Node::unescaped(text, name),
+    <text:"{{"> "&" <name:Name> "}}" => Node::unescaped(text, name),
+    <text:"{{">     <name:Name> "}}" => Node::escaped(text, name),
 }
 
-Comment: Option<Node<'a>> = {
-    "{{" "!" String "}}" => None,
+Comment: Node<'a> = {
+    <text:"{{"> "!" String <layout:"}}"> => Node::content(layout.trim(text)),
 }
 
-Content: Node<'a> = {
-    <start:@L> <text:"CONTENT"> => {
+Eof: Node<'a> = {
+    <"EOF"> => {
+        let (text, layout) = <>;
+        let text = layout.trim(text);
         *size_hint += text.len();
-        Node::new_content(start, text)
+        Node::content(text)
     },
 }
 
@@ -145,7 +148,7 @@ Name: Name<'a> = {
 
     <start:@L> "." => {
         Name::new(Key::dot(start), Vec::new())
-    }
+    },
 }
 
 Key: Key<'a> = {

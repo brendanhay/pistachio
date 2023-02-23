@@ -1,3 +1,5 @@
+use std::fmt;
+
 pub use self::{
     context::Context,
     stack::Stack,
@@ -17,7 +19,7 @@ mod stack;
 mod value;
 mod writer;
 
-pub trait Render {
+pub trait Render: fmt::Debug {
     #[inline]
     fn size_hint(&self, _template: &Template) -> usize {
         0
@@ -30,11 +32,17 @@ pub trait Render {
 
     #[inline]
     fn render_escaped(&self, _context: Context, _writer: &mut Writer) -> Result<(), Error> {
+        println!("default:render_escaped {:?}", self);
+
         // XXX: what about erroring by default - this way trying to use
         // something like {{ foo.bar.baz }} where baz is actually a lambda, will error.
         Ok(())
     }
+
+    #[inline]
     fn render_unescaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        println!("default:render_unescaped {:?}", self);
+
         // XXX: what about erroring by default - this way trying to use
         // something like {{ foo.bar.baz }} where baz is actually a lambda, will error.
         self.render_escaped(context, writer)
@@ -42,8 +50,10 @@ pub trait Render {
 
     #[inline]
     fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        println!("default:render_section {:?}", self);
+
         if self.is_truthy() {
-            context.push(&self).render_to_writer(writer)
+            context.render(&self, writer)
         } else {
             Ok(())
         }
@@ -51,8 +61,10 @@ pub trait Render {
 
     #[inline]
     fn render_inverted(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        println!("default:render_inverted {:?}", self);
+
         if !self.is_truthy() {
-            context.push(&self).render_to_writer(writer)
+            context.render(&self, writer)
         } else {
             Ok(())
         }
@@ -65,11 +77,8 @@ pub trait Render {
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        if key == Key::DOT {
-            self.render_escaped(context, writer).map(|_| true)
-        } else {
-            Ok(false)
-        }
+        println!("default:render_field_escaped {:?}", self);
+        Ok(false)
     }
 
     #[inline]
@@ -79,11 +88,8 @@ pub trait Render {
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        if key == Key::DOT {
-            self.render_unescaped(context, writer).map(|_| true)
-        } else {
-            Ok(false)
-        }
+        println!("default:render_field_unescaped {:?}", self);
+        Ok(false)
     }
 
     #[inline]
@@ -93,11 +99,8 @@ pub trait Render {
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        if key == Key::DOT {
-            self.render_section(context, writer).map(|_| true)
-        } else {
-            Ok(false)
-        }
+        println!("default:render_field_section {:?}", self);
+        Ok(false)
     }
 
     #[inline]
@@ -107,10 +110,7 @@ pub trait Render {
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        if key == Key::DOT {
-            self.render_inverted(context, writer).map(|_| true)
-        } else {
-            Ok(false)
-        }
+        println!("default:render_field_inverted {:?}", self);
+        Ok(false)
     }
 }

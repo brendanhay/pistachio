@@ -8,6 +8,7 @@ use crate::{
     Template,
 };
 
+#[derive(Debug)]
 pub struct Source {
     pub source: String,
 }

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::{
     Context,
     Writer,
@@ -5,9 +7,10 @@ use super::{
 use crate::{
     error::Error,
     render::Render,
+    template::Key,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Stack<'a> {
     a: &'a (dyn Render),
     b: &'a (dyn Render),
@@ -16,6 +19,12 @@ pub struct Stack<'a> {
     e: &'a (dyn Render),
     f: &'a (dyn Render),
 }
+
+// impl fmt::Debug for Stack<'_> {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         write!(f, "Stack")
+//     }
+// }
 
 impl<'a> Stack<'a> {
     #[inline]
@@ -61,16 +70,20 @@ impl<'a> Stack<'a> {
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        if self.a.render_field_escaped(key, context, writer)?
-            || self.b.render_field_escaped(key, context, writer)?
-            || self.c.render_field_escaped(key, context, writer)?
-            || self.d.render_field_escaped(key, context, writer)?
-            || self.e.render_field_escaped(key, context, writer)?
-            || self.f.render_field_escaped(key, context, writer)?
-        {
-            Ok(true)
+        if key == Key::DOT {
+            self.a.render_escaped(context, writer).map(|_| true)
         } else {
-            Ok(false)
+            if self.a.render_field_escaped(key, context, writer)?
+                || self.b.render_field_escaped(key, context, writer)?
+                || self.c.render_field_escaped(key, context, writer)?
+                || self.d.render_field_escaped(key, context, writer)?
+                || self.e.render_field_escaped(key, context, writer)?
+                || self.f.render_field_escaped(key, context, writer)?
+            {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
         }
     }
 
@@ -81,16 +94,20 @@ impl<'a> Stack<'a> {
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        if self.a.render_field_unescaped(key, context, writer)?
-            || self.b.render_field_unescaped(key, context, writer)?
-            || self.c.render_field_unescaped(key, context, writer)?
-            || self.d.render_field_unescaped(key, context, writer)?
-            || self.e.render_field_unescaped(key, context, writer)?
-            || self.f.render_field_unescaped(key, context, writer)?
-        {
-            Ok(true)
+        if key == Key::DOT {
+            self.a.render_unescaped(context, writer).map(|_| true)
         } else {
-            Ok(false)
+            if self.a.render_field_unescaped(key, context, writer)?
+                || self.b.render_field_unescaped(key, context, writer)?
+                || self.c.render_field_unescaped(key, context, writer)?
+                || self.d.render_field_unescaped(key, context, writer)?
+                || self.e.render_field_unescaped(key, context, writer)?
+                || self.f.render_field_unescaped(key, context, writer)?
+            {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
         }
     }
 
@@ -101,17 +118,21 @@ impl<'a> Stack<'a> {
         context: Context,
         writer: &mut Writer,
     ) -> Result<(), Error> {
-        if !self.a.render_field_section(key, context, writer)? {
-            let context = context.pop();
-            if !self.b.render_field_section(key, context, writer)? {
+        if key == Key::DOT {
+            self.a.render_section(context, writer)?;
+        } else {
+            if !self.a.render_field_section(key, context, writer)? {
                 let context = context.pop();
-                if !self.c.render_field_section(key, context, writer)? {
+                if !self.b.render_field_section(key, context, writer)? {
                     let context = context.pop();
-                    if !self.d.render_field_section(key, context, writer)? {
+                    if !self.c.render_field_section(key, context, writer)? {
                         let context = context.pop();
-                        if !self.e.render_field_section(key, context, writer)? {
+                        if !self.d.render_field_section(key, context, writer)? {
                             let context = context.pop();
-                            self.f.render_field_section(key, context, writer)?;
+                            if !self.e.render_field_section(key, context, writer)? {
+                                let context = context.pop();
+                                self.f.render_field_section(key, context, writer)?;
+                            }
                         }
                     }
                 }
@@ -128,14 +149,18 @@ impl<'a> Stack<'a> {
         context: Context,
         writer: &mut Writer,
     ) -> Result<(), Error> {
-        if !self.a.render_field_inverted(key, context, writer)?
-            && !self.b.render_field_inverted(key, context, writer)?
-            && !self.c.render_field_inverted(key, context, writer)?
-            && !self.d.render_field_inverted(key, context, writer)?
-            && !self.e.render_field_inverted(key, context, writer)?
-            && self.f.render_field_inverted(key, context, writer)?
-        {
-            context.render_to_writer(writer)?;
+        if key == Key::DOT {
+            self.a.render_inverted(context, writer)?;
+        } else {
+            if !self.a.render_field_inverted(key, context, writer)?
+                && !self.b.render_field_inverted(key, context, writer)?
+                && !self.c.render_field_inverted(key, context, writer)?
+                && !self.d.render_field_inverted(key, context, writer)?
+                && !self.e.render_field_inverted(key, context, writer)?
+                && !self.f.render_field_inverted(key, context, writer)?
+            {
+                context.render_to_writer(writer)?;
+            }
         }
 
         Ok(())

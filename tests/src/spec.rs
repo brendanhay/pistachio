@@ -74,6 +74,10 @@ impl Test {
         let template = match pistachio.add(self.name.clone(), template) {
             Ok(template) => template,
             Err(err) => {
+                let span = err
+                    .render_span(&self.template)
+                    .unwrap_or_else(|| err.to_string());
+
                 println!("");
                 println!("// Begin");
                 println!("        <name> {}", &self.name);
@@ -81,6 +85,7 @@ impl Test {
                 println!("        <data> {}", self.data);
                 println!("    <template> {}", self.template);
                 println!("       <error> {}", &err);
+                println!(" {}", &span);
                 println!("// End");
                 println!("");
 
@@ -104,13 +109,13 @@ impl Test {
             println!(" <description> {}", self.desc);
             println!("        <data> {}", data);
             println!("    <template> {:#?}", template);
-            println!("    <expected> {}", &expect);
-            println!("      <actual> {}", &actual);
+            println!("    <expected> {:?}", &expect);
+            println!("      <actual> {:?}", &actual);
             println!("// End");
             println!("");
         }
 
-        assert_eq!(actual, Ok(expect));
+        assert_eq!(Ok(expect), actual);
     }
 }
 
@@ -124,15 +129,15 @@ fn test_spec_sections() {
     Spec::run("spec/specs/sections.json")
 }
 
-// #[test]
-// fn test_spec_inverted() {
-//     Spec::run("spec/specs/inverted.json")
-// }
+#[test]
+fn test_spec_inverted() {
+    Spec::run("spec/specs/inverted.json")
+}
 
-// #[test]
-// fn test_spec_comments() {
-//     Spec::run("spec/specs/comments.json")
-// }
+#[test]
+fn test_spec_comments() {
+    Spec::run("spec/specs/comments.json")
+}
 
 // #[test]
 // fn test_spec_partials() {

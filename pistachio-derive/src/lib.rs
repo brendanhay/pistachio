@@ -215,7 +215,7 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
                 context: ::pistachio::render::Context,
                 writer: &mut ::pistachio::render::Writer
             ) -> std::result::Result<(), ::pistachio::Error> {
-                context.push(self).render_to_writer(writer)
+                context.render(self, writer)
             }
 
             #[inline]

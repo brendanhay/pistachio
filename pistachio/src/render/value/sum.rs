@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{
     error::Error,
     render::{
@@ -50,7 +52,7 @@ impl<T: Render> Render for Option<T> {
     }
 }
 
-impl<T: Render, E> Render for Result<T, E> {
+impl<T: Render, E: fmt::Debug> Render for Result<T, E> {
     #[inline]
     fn size_hint(&self, template: &Template) -> usize {
         match self {

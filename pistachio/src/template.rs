@@ -8,7 +8,10 @@ use std::{
 use crate::{
     lexer::Lexer,
     map,
-    parser::Parser,
+    parser::{
+        Parser,
+        Spanned,
+    },
     render::{
         Context,
         Render,
@@ -40,12 +43,12 @@ impl<'a> Template<'a> {
         self.size_hint
     }
 
-    pub fn source(&self) -> &str {
-        &self.source
-    }
-
     pub(crate) fn nodes(&self) -> &[Node] {
         &self.nodes
+    }
+
+    pub fn source(&self) -> &str {
+        &self.source
     }
 
     #[inline]
@@ -53,7 +56,7 @@ impl<'a> Template<'a> {
         source: Cow<'a, str>,
         loader: &mut dyn Loader<'a>,
     ) -> Result<Template<'a>, Error> {
-        let raise = loader.raise();
+        let raise = loader.raise_if_missing();
         if source.is_empty() {
             return Ok(Template {
                 size_hint: 0,
@@ -86,9 +89,7 @@ impl<'a> Template<'a> {
         // Add 25% for escaping and various expansions.
         capacity += capacity / 4;
 
-        Context::new(self.raise, &self.nodes)
-            .push(vars)
-            .render(capacity)
+        Context::new(self.raise, &self.nodes, &vars).render_to_string(capacity)
     }
 
     pub fn render_to_writer<T, W>(&self, vars: &T, writer: &mut W) -> Result<(), Error>
@@ -98,21 +99,29 @@ impl<'a> Template<'a> {
     {
         let mut writer = Writer::new(writer);
 
-        Context::new(self.raise, &self.nodes)
-            .push(&vars)
-            .render_to_writer(&mut writer)?;
+        Context::new(self.raise, &self.nodes, &vars).render_to_writer(&mut writer)?;
 
         Ok(())
     }
 
-    pub(crate) fn include(&self) -> Vec<Node<'a>> {
-        self.nodes.clone()
+    pub(crate) fn include_partial(&self, text: &'a str) -> Vec<Node<'a>> {
+        let mut nodes = Vec::with_capacity(self.nodes.len() + 1);
+        nodes.push(Node::content(text));
+        nodes.extend_from_slice(&self.nodes);
+        nodes
     }
 
-    pub(crate) fn inherit(&self, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
-        let mut buffer = Vec::with_capacity(self.nodes.len());
-        let mut blocks: map::Map<_, _> = nodes
+    pub(crate) fn inherit_parent(
+        &self,
+        text: &'a str,
+        child: Option<Vec<Node<'a>>>,
+        close: Node<'a>,
+    ) -> Vec<Node<'a>> {
+        let child = child.unwrap_or_else(|| Vec::new());
+        let mut nodes = Vec::with_capacity(self.nodes.len() + 2);
+        let mut blocks: map::Map<_, _> = child
             .iter()
+            .chain(iter::once(&close))
             .enumerate()
             .filter_map(|(i, node)| match node.tag {
                 Tag::Block => Some((node.key, (i, node.children()))),
@@ -120,24 +129,26 @@ impl<'a> Template<'a> {
             })
             .collect();
 
+        nodes.push(Node::content(text));
+
         for node in &self.nodes {
             match node.tag {
                 // For each block in the parent replace with any matching block override
                 // found in `nodes`. Any blocks that aren't overriden are preserved.
                 Tag::Block => {
                     if let Some((index, next)) = blocks.remove(node.key) {
-                        buffer.extend_from_slice(&nodes[index..next as usize]);
+                        nodes.extend_from_slice(&child[index..next as usize]);
                     } else {
-                        buffer.push(node.clone());
+                        nodes.push(node.clone());
                     }
                 },
 
                 // Any non-block tags are preserved.
-                _ => buffer.push(node.clone()),
+                _ => nodes.push(node.clone()),
             }
         }
 
-        buffer
+        nodes
     }
 }
 
@@ -145,38 +156,101 @@ impl<'a> Template<'a> {
 /// Named as such to avoid confusion with the mustache `{{$block}}` tag.
 #[derive(Debug, Clone, Copy)]
 pub struct Node<'a> {
+    pub text: &'a str,
     pub tag: Tag,
     pub key: &'a str,
-    pub text: &'a str,
     start: usize,
     children: u32,
 }
 
 impl<'a> Node<'a> {
-    fn new(tag: Tag, key: Key<'a>, text: &'a str, children: usize) -> Self {
+    fn new(text: &'a str, tag: Tag, key: Key<'a>, children: usize) -> Self {
         Self {
             tag,
+            start: key.start,
             key: key.ident,
             text,
-            start: key.start,
             children: children as u32,
         }
     }
 
-    pub fn new_content(start: usize, text: &'a str) -> Self {
-        Node {
+    pub fn content(text: &'a str) -> Self {
+        Self {
+            text,
             tag: Tag::Content,
             key: "",
+            start: 0,
+            children: 0,
+        }
+    }
+
+    pub fn closing(text: &'a str, name: &'a str, start: usize) -> Self {
+        Self {
             text,
+            tag: Tag::Closing,
+            key: name,
             start,
             children: 0,
         }
     }
 
-    pub fn new_block(key: Key<'a>, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
-        iter::once(Node::new(Tag::Block, key, "", nodes.len()))
+    pub fn escaped(text: &'a str, name: Name<'a>) -> Vec<Node<'a>> {
+        name.explode(text, Tag::Section, Tag::Escaped, None, None)
+    }
+
+    pub fn unescaped(text: &'a str, name: Name<'a>) -> Vec<Node<'a>> {
+        name.explode(text, Tag::Section, Tag::Unescaped, None, None)
+    }
+
+    pub fn section(
+        text: &'a str,
+        name: Name<'a>,
+        nodes: Option<Vec<Node<'a>>>,
+        close: Node<'a>,
+    ) -> Vec<Node<'a>> {
+        name.explode(text, Tag::Section, Tag::Section, nodes, Some(close))
+    }
+
+    pub fn inverted(
+        text: &'a str,
+        name: Name<'a>,
+        nodes: Option<Vec<Node<'a>>>,
+        close: Node<'a>,
+    ) -> Vec<Node<'a>> {
+        name.explode(text, Tag::Inverted, Tag::Inverted, nodes, Some(close))
+    }
+
+    pub fn block(
+        text: &'a str,
+        key: Key<'a>,
+        nodes: Option<Vec<Node<'a>>>,
+        close: Node<'a>,
+    ) -> Vec<Node<'a>> {
+        let nodes = nodes.unwrap_or_else(|| Vec::new());
+
+        iter::once(Node::new(text, Tag::Block, key, nodes.len() + 1))
             .chain(nodes)
+            .chain(iter::once(close))
             .collect()
+    }
+
+    pub fn dynamic_partial(text: &'a str, name: Name<'a>) -> Vec<Node<'a>> {
+        name.explode(text, Tag::Section, Tag::Partial, None, None)
+    }
+
+    pub fn dynamic_parent(
+        text: &'a str,
+        name: Name<'a>,
+        child: Option<Vec<Node<'a>>>,
+        close: Node<'a>,
+    ) -> Vec<Node<'a>> {
+        let child = child.unwrap_or_else(|| Vec::new());
+        let mut nodes = Vec::with_capacity(child.len() + 2);
+        nodes.push(Node::content(text));
+        nodes.extend(child);
+        nodes.push(close);
+
+        name.explode(text, Tag::Section, Tag::Parent, Some(nodes), None)
     }
 
     pub fn span(&self) -> (usize, usize) {
@@ -184,6 +258,7 @@ impl<'a> Node<'a> {
         (self.start, self.start + self.key.len())
     }
 
+    #[inline]
     pub fn children(&self) -> u32 {
         self.children
     }
@@ -224,6 +299,9 @@ pub enum Tag {
     /// `{{>partial}}`
     Partial,
 
+    /// `{{/section}}`
+    Closing,
+
     /// UTF8 text.
     Content,
 }
@@ -231,8 +309,8 @@ pub enum Tag {
 /// The `Key` grammar production rule representing a single identifier with no dots.
 #[derive(Debug, Clone, Copy)]
 pub struct Key<'a> {
-    start: usize,
-    ident: &'a str,
+    pub start: usize,
+    pub ident: &'a str,
 }
 
 impl<'a> Key<'a> {
@@ -250,15 +328,21 @@ impl<'a> Key<'a> {
     }
 }
 
-impl PartialEq<str> for Key<'_> {
-    fn eq(&self, other: &str) -> bool {
-        self.ident == other
+impl PartialEq<&str> for Key<'_> {
+    fn eq(&self, other: &&str) -> bool {
+        self.ident == *other
     }
 }
 
 impl fmt::Display for Key<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.ident)
+    }
+}
+
+impl Spanned for Key<'_> {
+    fn span(&self) -> (usize, usize) {
+        (self.start, self.ident).span()
     }
 }
 
@@ -270,9 +354,9 @@ pub struct Name<'a> {
     tail: Vec<Key<'a>>,
 }
 
-impl PartialEq<str> for Name<'_> {
-    fn eq(&self, other: &str) -> bool {
-        if self.head.ident == other {
+impl PartialEq<&str> for Name<'_> {
+    fn eq(&self, other: &&str) -> bool {
+        if self.head.ident == *other {
             true
         } else {
             iter::once(&self.head)
@@ -296,55 +380,68 @@ impl fmt::Display for Name<'_> {
     }
 }
 
+impl Spanned for Name<'_> {
+    fn span(&self) -> (usize, usize) {
+        let (start, mut end) = self.head.span();
+
+        for key in &self.tail {
+            end += 1; // '.'
+            end += key.ident.len();
+        }
+
+        (start, end)
+    }
+}
+
 impl<'a> Name<'a> {
     pub fn new(head: Key<'a>, tail: Vec<Key<'a>>) -> Self {
         Self { head, tail }
     }
 
-    pub fn section(self, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
-        self.explode(Tag::Section, Tag::Section, Some(nodes))
-    }
-
-    pub fn inverted(self, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
-        self.explode(Tag::Inverted, Tag::Inverted, Some(nodes))
-    }
-
-    pub fn parent(self, nodes: Vec<Node<'a>>) -> Vec<Node<'a>> {
-        self.explode(Tag::Section, Tag::Parent, Some(nodes))
-    }
-
-    pub fn partial(self) -> Vec<Node<'a>> {
-        self.explode(Tag::Section, Tag::Partial, None)
-    }
-
-    pub fn escaped(self) -> Vec<Node<'a>> {
-        self.explode(Tag::Section, Tag::Escaped, None)
-    }
-
-    pub fn unescaped(self) -> Vec<Node<'a>> {
-        self.explode(Tag::Section, Tag::Unescaped, None)
-    }
-
     fn explode(
         self,
+        text: &'a str,
         parent_tag: Tag,
         target_tag: Tag,
         nodes: Option<Vec<Node<'a>>>,
+        close: Option<Node<'a>>,
     ) -> Vec<Node<'a>> {
+        // The number of nested sections to insert.
         let dots = self.tail.len();
-        let children = nodes.as_ref().map(|n| n.len()).unwrap_or(0);
+        // The total number of child nodes for the first `self.head` section.
+        let mut children = dots + nodes.as_ref().map(|n| n.len()).unwrap_or(0);
+        if close.is_some() {
+            children += 1;
+        }
+
+        // head              : children = dots + nodes.len() + close
+        //   tail1           : children = head.children - 1
+        //     tail2         : children = head.children - 2
+        //       tailN       : children = head.children - N
+        //         [..nodes] : children = unchanged
+        //         close     : children = 0
 
         iter::once(self.head)
             .chain(self.tail.into_iter())
             .enumerate()
             .map(|(index, key)| {
+                let head = index == 0;
                 let last = index == dots;
-                let tag = if last { target_tag } else { parent_tag };
-                let next = if last { children } else { dots - index };
+                let node = Node::new(
+                    if head { text } else { "" },
+                    if last { target_tag } else { parent_tag },
+                    key,
+                    children,
+                );
 
-                Node::new(tag, key, "", next)
+                if children > 0 {
+                    children -= 1;
+                }
+
+                node
             })
             .chain(nodes.into_iter().flatten())
+            .chain(close.into_iter())
             .collect()
     }
 }

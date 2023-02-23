@@ -16,8 +16,10 @@ macro_rules! impl_sequence {
 
         #[inline]
         fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+            println!("sequence.render_section: {:?}", self);
+
             for item in self.iter() {
-                item.render_section(context, writer)?;
+                context.render(item, writer)?;
             }
 
             Ok(())

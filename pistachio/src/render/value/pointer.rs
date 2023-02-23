@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    fmt,
     ops::Deref,
     rc::Rc,
     sync::Arc,
@@ -113,6 +114,6 @@ impl_pointers! {
     &T,
     Box<T>,
     Rc<T>,
-    Arc<T>,
-    Cow<'_, T>: ToOwned
+    Arc<T>
+    // Cow<'_, T>: ToOwned
 }

@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// The mustache context containing the execution stack and current sub-tree of nodes.
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Context<'a> {
     stack: Stack<'a>,
     nodes: &'a [Node<'a>],
@@ -22,9 +22,9 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    pub fn new(raise: bool, nodes: &'a [Node<'a>]) -> Self {
+    pub fn new(raise: bool, nodes: &'a [Node<'a>], frame: &'a dyn Render) -> Self {
         Self {
-            stack: Stack::new(),
+            stack: Stack::new().push(frame),
             nodes,
             raise,
         }
@@ -41,13 +41,6 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn push(self, frame: &'a dyn Render) -> Self {
-        Self {
-            stack: self.stack.push(frame),
-            ..self
-        }
-    }
-
     pub fn pop(self) -> Self {
         Self {
             stack: self.stack.pop(),
@@ -55,7 +48,21 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn render(self, capacity: usize) -> Result<String, Error> {
+    pub fn render(self, frame: &'a dyn Render, writer: &mut Writer) -> Result<(), Error> {
+        println!("pushing frame {:?}", frame);
+
+        // XXX: note to self about bugs of a christmas past; don't leak the
+        // `context.push(x).render(writer)` idiom, keep it opaque since it's
+        // incorrect but incredibly easy to accidentally do when implementing
+        // Render for new types - hence, always use `render` instead.
+        Self {
+            stack: self.stack.push(frame),
+            ..self
+        }
+        .render_to_writer(writer)
+    }
+
+    pub fn render_to_string(self, capacity: usize) -> Result<String, Error> {
         let mut buffer = Vec::with_capacity(capacity);
         let mut writer: Writer = Writer::new(&mut buffer);
 
@@ -72,6 +79,10 @@ impl<'a> Context<'a> {
 
         while let Some(node) = self.nodes.get(index) {
             index += 1;
+
+            writer.write_unescaped(node.text)?;
+
+            println!("render_to_writer {:?} {} {:#?}", node.tag, node.key, self);
 
             match node.tag {
                 Tag::Escaped => {
@@ -116,11 +127,13 @@ impl<'a> Context<'a> {
 
                 Tag::Partial => {},
 
-                Tag::Content => {
-                    writer.write_unescaped(node.text)?;
-                },
+                Tag::Closing => {},
+
+                Tag::Content => {},
             }
         }
+
+        println!("exit render");
 
         Ok(())
     }

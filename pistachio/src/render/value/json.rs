@@ -42,6 +42,8 @@ impl Render for Value {
 
     #[inline]
     fn render_escaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        // println!("json:render_escaped {:?}", self);
+
         match self {
             Value::Null => ().render_escaped(context, writer),
             Value::Bool(b) => b.render_escaped(context, writer),
@@ -54,6 +56,8 @@ impl Render for Value {
 
     #[inline]
     fn render_unescaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        // println!("json:render_unescaped {:?}", self);
+
         match self {
             Value::Null => ().render_unescaped(context, writer),
             Value::Bool(b) => b.render_unescaped(context, writer),
@@ -66,6 +70,8 @@ impl Render for Value {
 
     #[inline]
     fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        // println!("json:render_section {:?}", self);
+
         match self {
             Value::Null => ().render_section(context, writer),
             Value::Bool(b) => b.render_section(context, writer),
@@ -78,6 +84,8 @@ impl Render for Value {
 
     #[inline]
     fn render_inverted(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        // println!("json:render_inverted {:?}", self);
+
         match self {
             Value::Null => ().render_inverted(context, writer),
             Value::Bool(b) => b.render_inverted(context, writer),
@@ -95,6 +103,8 @@ impl Render for Value {
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
+        // println!("json:render_field_escaped {:?}", self);
+
         match self {
             Value::Null => ().render_field_escaped(key, context, writer),
             Value::Bool(b) => b.render_field_escaped(key, context, writer),
@@ -112,6 +122,8 @@ impl Render for Value {
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
+        // println!("json:render_field_unescaped {:?}", self);
+
         match self {
             Value::Null => ().render_field_unescaped(key, context, writer),
             Value::Bool(b) => b.render_field_unescaped(key, context, writer),
@@ -129,6 +141,8 @@ impl Render for Value {
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
+        // println!("json:render_field_section {:?}", self);
+
         match self {
             Value::Null => ().render_field_section(key, context, writer),
             Value::Bool(b) => b.render_field_section(key, context, writer),
@@ -146,6 +160,8 @@ impl Render for Value {
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
+        // println!("json:render_field_inverted {} {:?}", key, self);
+
         match self {
             Value::Null => ().render_field_inverted(key, context, writer),
             Value::Bool(b) => b.render_field_inverted(key, context, writer),
@@ -190,6 +206,7 @@ impl Render for Number {
 
     #[inline]
     fn render_escaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        println!("number:render_escaped {:?}", self);
         if let Some(n) = self.as_f64() {
             n.render_escaped(context, writer)
         } else if let Some(n) = self.as_u64() {

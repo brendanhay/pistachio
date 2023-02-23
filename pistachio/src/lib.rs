@@ -162,7 +162,7 @@ impl Pistachio {
             .map_err(Error::Io)?;
 
         if !path.starts_with(&self.directory) {
-            return Err(Error::InvalidPartial(Box::from(path.display().to_string())));
+            return Err(Error::InvalidPartial(path.display().to_string()));
         }
 
         let source = fs::read_to_string(&path).map_err(Error::Io)?;
@@ -194,7 +194,7 @@ pub trait Loader<'a> {
     fn get_template(&mut self, name: &'a str) -> Result<&Template<'a>, Error>;
 
     /// If missing `{{foo}}` variables should raise an error.
-    fn raise(&self) -> bool {
+    fn raise_if_missing(&self) -> bool {
         false
     }
 }
@@ -216,7 +216,7 @@ impl Loader<'static> for Pistachio {
         Ok(&self.templates[name])
     }
 
-    fn raise(&self) -> bool {
+    fn raise_if_missing(&self) -> bool {
         self.raise
     }
 }
