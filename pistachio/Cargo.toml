@@ -10,25 +10,11 @@ keywords = ["html", "template", "mustache"]
 categories = ["template-engine"]
 
 [dependencies]
-lalrpop-util = { version = "0.19", default-features = false }
-
-# Optional
 ahash = { version = "0.8", default-features = false }
-pistachio-derive = { version = "0.1", optional = true, path = "../pistachio-derive" }
-serde_json = { version = "1", optional = true }
+lalrpop-util = { version = "0.19", default-features = false }
 serde = { version = "1", default-features = false }
 ryu = "1"
 itoa = "1"
 
 [build-dependencies]
 lalrpop = { version = "0.19", default-features = false }
-
-[features]
-default = ["derive"]
-
-# Re-export the `Render` derive macro.
-derive = ["dep:pistachio-derive"]
-
-# Enable `Render` impls for `serde::Value` and allow the use of the `json!`
-# macro to construct variables for pistachio templates.
-serde_json = ["dep:serde_json"]

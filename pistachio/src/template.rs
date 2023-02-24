@@ -9,17 +9,15 @@ use serde::Serialize;
 
 use crate::{
     lexer::Lexer,
-    map,
     parser::{
         Parser,
         Spanned,
     },
     render::{
-        to_variable,
         Context,
-        Render,
         Writer,
     },
+    to_variable,
     Error,
     Loader,
     LoadingDisabled,
@@ -28,11 +26,14 @@ use crate::{
 /// Represents a parsed and normalised template.
 #[derive(Debug)]
 pub struct Template<'a> {
-    size_hint: usize, // XXX: these are exposed to the grammar
+    size_hint: usize,
     nodes: Vec<Node<'a>>,
     source: Cow<'a, str>,
     raise: bool,
 }
+
+// XXX: Something to record if the template has no non-content nodes,
+// ie. it doesn't need to be rendered - we just use the source.
 
 impl<'a> Template<'a> {
     pub fn new<S>(source: S) -> Result<Template<'a>, Error>
@@ -44,6 +45,10 @@ impl<'a> Template<'a> {
 
     pub fn size_hint(&self) -> usize {
         self.size_hint
+    }
+
+    pub(crate) fn nodes(&self) -> &[Node] {
+        &self.nodes
     }
 
     pub fn source(&self) -> &str {

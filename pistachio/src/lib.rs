@@ -26,14 +26,21 @@ pub use pistachio_derive::Render;
 // };
 //
 pub use self::{
-    error::{
-        Error,
-        Result,
-    },
+    error::Error,
     map::Map,
     parser::ParseError,
-    render::Render,
+    render::{
+        Context,
+        Render,
+        Source,
+        WriteEscaped,
+        Writer,
+    },
     template::Template,
+    variable::{
+        to_variable,
+        Variable,
+    },
 };
 
 mod error;
@@ -45,6 +52,7 @@ mod template;
 // Exposed for pistachio-macros to use.
 #[doc(hidden)]
 pub mod render;
+mod variable;
 
 /// The caching strategy determining how templates are loaded.
 #[derive(Debug, Clone, Copy)]

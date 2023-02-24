@@ -1,23 +1,22 @@
 pub use self::{
     context::Context,
-    ser::{
-        to_variable,
-        Variable,
-    },
+    stack::Stack,
     writer::{
         WriteEscaped,
         Writer,
     },
 };
-use crate::error::Error;
+use crate::{
+    Error,
+    Template,
+    Variable,
+};
 
 mod context;
-mod ser;
-// mod stack;
-// mod value;
 mod stack;
 mod writer;
 
+// Put the W on the trait allows boxing the trait object for Render<String>.
 pub trait Render {
     #[inline]
     fn size_hint(&self) -> usize {
@@ -30,19 +29,28 @@ pub trait Render {
     }
 
     #[inline]
-    fn render_escaped<W: WriteEscaped>(&self, _writer: &mut W) -> Result<(), Error> {
-        // XXX: what about erroring by default - this way trying to use
-        // something like {{ foo.bar.baz }} where baz is actually a lambda, will error.
+    fn render_escaped(&self, _context: Context, _writer: &mut Writer) -> Result<(), Error> {
         Ok(())
     }
 
     #[inline]
-    fn render_unescaped<W: WriteEscaped>(&self, writer: &mut W) -> Result<(), Error> {
-        // XXX: what about erroring by default - this way trying to use
-        // something like {{ foo.bar.baz }} where baz is actually a lambda, will error.
-        self.render_escaped(writer)
+    fn render_unescaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        self.render_escaped(context, writer)
     }
 }
+
+// #[derive(Debug)]
+// pub struct Source {
+//     pub source: String,
+// }
+
+// impl Render for Source {
+//     #[inline]
+//     fn render_escaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+//         let template = Template::new(&self.source)?;
+//         context.fork(&template).render_to_writer(writer)
+//     }
+// }
 
 impl Render for bool {
     #[inline]
@@ -56,7 +64,7 @@ impl Render for bool {
     }
 
     #[inline]
-    fn render_escaped<W: WriteEscaped>(&self, writer: &mut W) -> Result<(), Error> {
+    fn render_escaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
         writer.write_escaped(if *self { "true" } else { "false" })
     }
 }
@@ -73,38 +81,12 @@ impl Render for String {
     }
 
     #[inline]
-    fn render_escaped<W: WriteEscaped>(&self, writer: &mut W) -> Result<(), Error> {
+    fn render_escaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
         writer.write_escaped(self)
     }
 
     #[inline]
-    fn render_unescaped<W: WriteEscaped>(&self, writer: &mut W) -> Result<(), Error> {
+    fn render_unescaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
         writer.write_unescaped(self)
-    }
-}
-
-impl Variable {
-    #[inline]
-    pub fn size_hint(&self) -> usize {
-        match self {
-            Variable::Null => 0,
-            Variable::Bool(b) => b.size_hint(),
-            Variable::Number(n) => n.size_hint(),
-            Variable::String(s) => s.size_hint(),
-            Variable::Vec(v) => v.iter().map(|x| x.size_hint()).sum::<usize>(),
-            Variable::Map(m) => m.values().map(|x| x.size_hint()).sum::<usize>(),
-        }
-    }
-
-    #[inline]
-    pub fn is_truthy(&self) -> bool {
-        match self {
-            Variable::Null => false,
-            Variable::Bool(b) => b.is_truthy(),
-            Variable::Number(n) => n.is_truthy(),
-            Variable::String(s) => s.is_truthy(),
-            Variable::Vec(v) => !v.is_empty(),
-            Variable::Map(m) => !m.is_empty(),
-        }
     }
 }

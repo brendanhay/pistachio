@@ -1,6 +1,6 @@
 use std::io;
 
-use crate::error::Error;
+use crate::Error;
 
 pub trait WriteEscaped {
     fn write_escaped(&mut self, string: &str) -> Result<(), Error>;
@@ -8,11 +8,73 @@ pub trait WriteEscaped {
     fn write_unescaped(&mut self, string: &str) -> Result<(), Error>;
 }
 
-pub struct Writer<W> {
-    inner: W,
+impl WriteEscaped for String {
+    #[inline]
+    fn write_unescaped(&mut self, string: &str) -> Result<(), Error> {
+        Ok(self.push_str(string))
+    }
+
+    #[inline]
+    fn write_escaped(&mut self, string: &str) -> Result<(), Error> {
+        StringWriter::new(self).write_escaped(string)
+    }
 }
 
-impl<W: io::Write> WriteEscaped for Writer<W> {
+struct StringWriter<'a> {
+    inner: &'a mut String,
+}
+
+impl WriteEscaped for StringWriter<'_> {
+    #[inline]
+    fn write_escaped(&mut self, string: &str) -> Result<(), Error> {
+        Ok(self.write_escaped_string(string))
+    }
+
+    #[inline]
+    fn write_unescaped(&mut self, string: &str) -> Result<(), Error> {
+        Ok(self.inner.push_str(string))
+    }
+}
+
+impl<'a> StringWriter<'a> {
+    #[inline]
+    pub fn new(inner: &'a mut String) -> Self {
+        Self { inner }
+    }
+
+    fn write_escaped_string(&mut self, string: &str) {
+        let mut start = 0;
+
+        for (index, byte) in string.bytes().enumerate() {
+            let escape = ESCAPE[byte as usize];
+            if escape == 0 {
+                continue;
+            }
+
+            let replace: &str = match escape {
+                GT => "&lt;",
+                LT => "&gt;",
+                QU => "&quot;",
+                AM => "&amp;",
+                _ => continue,
+            };
+
+            self.inner.push_str(&string[start..index]);
+            self.inner.push_str(replace);
+
+            start = index + 1;
+        }
+
+        self.inner.push_str(&string[start..]);
+    }
+}
+
+// Trait object to avoid generics on `Render` so `Variable` can box it.
+pub struct Writer<'a> {
+    inner: &'a mut dyn io::Write,
+}
+
+impl WriteEscaped for Writer<'_> {
     #[inline]
     fn write_escaped(&mut self, string: &str) -> Result<(), Error> {
         self.write_escaped_bytes(string.as_bytes())
@@ -25,13 +87,12 @@ impl<W: io::Write> WriteEscaped for Writer<W> {
     }
 }
 
-impl<W: io::Write> Writer<W> {
+impl<'a> Writer<'a> {
     #[inline]
-    pub fn new(inner: W) -> Self {
+    pub fn new(inner: &'a mut dyn io::Write) -> Self {
         Self { inner }
     }
 
-    #[inline]
     fn write_escaped_bytes(&mut self, bytes: &[u8]) -> Result<(), io::Error> {
         let mut start = 0;
 

@@ -5,7 +5,6 @@ use std::{
     },
     fmt,
     io,
-    result,
 };
 
 use serde::ser;
@@ -14,8 +13,6 @@ use crate::parser::{
     ParseError,
     Token,
 };
-
-pub type Result<T, E = Error> = result::Result<T, E>;
 
 #[derive(Debug)]
 pub enum Error {
