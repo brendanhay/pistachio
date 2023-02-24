@@ -24,7 +24,10 @@ pub use pistachio_derive::Render;
 // };
 //
 pub use self::{
-    error::Error,
+    error::{
+        Error,
+        Result,
+    },
     map::Map,
     parser::ParseError,
     render::Render,

@@ -11,6 +11,7 @@ use crate::{
 };
 
 mod context;
+mod ser;
 mod stack;
 mod value;
 mod writer;

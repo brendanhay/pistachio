@@ -323,9 +323,12 @@ name = "pistachio"
 version = "0.1.0"
 dependencies = [
  "ahash",
+ "itoa",
  "lalrpop",
  "lalrpop-util",
  "pistachio-derive",
+ "ryu",
+ "serde",
  "serde_json",
 ]
 
