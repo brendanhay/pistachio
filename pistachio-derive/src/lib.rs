@@ -140,7 +140,7 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
 
     fields.sort_unstable();
 
-    let render_field_escaped = fields.iter().map(
+    let render_named_escaped = fields.iter().map(
         |Field {
              key,
              field,
@@ -159,7 +159,7 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
         },
     );
 
-    let render_field_unescaped = fields.iter().map(
+    let render_named_unescaped = fields.iter().map(
         |Field {
              key,
              field,
@@ -178,13 +178,13 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
         },
     );
 
-    let render_field_section = fields.iter().map(|Field { key, field, .. }| {
+    let render_named_section = fields.iter().map(|Field { key, field, .. }| {
         quote! {
             #key => self.#field.render_section(context, writer).map(|_| true),
         }
     });
 
-    let render_field_inverted = fields.iter().map(|Field { key, field, .. }| {
+    let render_named_inverted = fields.iter().map(|Field { key, field, .. }| {
         quote! {
             #key => self.#field.render_inverted(context, writer).map(|_| true),
         }
@@ -215,68 +215,84 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
                 context: ::pistachio::render::Context,
                 writer: &mut ::pistachio::render::Writer
             ) -> std::result::Result<(), ::pistachio::Error> {
-                context.render(self, writer)
+                context.push(self).render_to_writer(writer)
             }
 
             #[inline]
-            fn render_field_escaped(
+            fn render_named_escaped(
                 &self,
-                key: &str,
+                name: &[&str],
                 context: ::pistachio::render::Context,
                 writer: &mut ::pistachio::render::Writer
             ) -> std::result::Result<bool, ::pistachio::Error> {
-                match key {
-                    #( #render_field_escaped )*
+                if name.is_empty() {
+                    return Ok(false)
+                }
+
+                match name[0] {
+                    #( #render_named_escaped )*
                     _ => Ok(
-                        #( self.#flatten.render_field_escaped(key, context, writer)? ||)*
+                        #( self.#flatten.render_named_escaped(&name[1..], context, writer)? ||)*
                         false
                     )
                 }
             }
 
             #[inline]
-            fn render_field_unescaped(
+            fn render_named_unescaped(
                 &self,
-                key: &str,
+                name: &[&str],
                 context: ::pistachio::render::Context,
                 writer: &mut ::pistachio::render::Writer
             ) -> std::result::Result<bool, ::pistachio::Error> {
-                match key {
-                    #( #render_field_unescaped )*
+                if name.is_empty() {
+                    return Ok(false)
+                }
+
+                match name[0] {
+                    #( #render_named_unescaped )*
                     _ => Ok(
-                        #( self.#flatten.render_field_unescaped(key, context, writer)? ||)*
+                        #( self.#flatten.render_named_unescaped(&name[1..], context, writer)? ||)*
                         false
                     )
                 }
             }
 
             #[inline]
-            fn render_field_section(
+            fn render_named_section(
                 &self,
-                key: &str,
+                name: &[&str],
                 context: ::pistachio::render::Context,
                 writer: &mut ::pistachio::render::Writer
             ) -> std::result::Result<bool, ::pistachio::Error> {
-                match key {
-                    #( #render_field_section )*
+                if name.is_empty() {
+                    return Ok(false)
+                }
+
+                match name[0] {
+                    #( #render_named_section )*
                     _ => Ok(
-                        #( self.#flatten.render_field_section(key, context, writer)? ||)*
+                        #( self.#flatten.render_named_section(&name[1..], context, writer)? ||)*
                         false
                     )
                 }
             }
 
             #[inline]
-            fn render_field_inverted(
+            fn render_named_inverted(
                 &self,
-                key: &str,
+                name: &[&str],
                 context: ::pistachio::render::Context,
                 writer: &mut ::pistachio::render::Writer
             ) -> std::result::Result<bool, ::pistachio::Error> {
-                match key {
-                    #( #render_field_inverted )*
+                if name.is_empty() {
+                    return Ok(false)
+                }
+
+                match name[0] {
+                    #( #render_named_inverted )*
                     _ => Ok(
-                        #( self.#flatten.render_field_inverted(key, context, writer)? ||)*
+                        #( self.#flatten.render_named_inverted(&name[1..], context, writer)? ||)*
                         false
                     )
                 }

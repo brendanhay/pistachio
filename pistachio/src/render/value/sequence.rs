@@ -19,7 +19,7 @@ macro_rules! impl_sequence {
             println!("sequence.render_section: {:?}", self);
 
             for item in self.iter() {
-                context.render(item, writer)?;
+                item.render_section(context.push(item), writer)?;
             }
 
             Ok(())

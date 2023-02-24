@@ -9,7 +9,7 @@
 use crate::{
     lexer::{Token, Layout},
     parser::{Spanned, balanced},
-    template::{Key, Node, Name},
+    template::{Name, Node},
     Error,
     Loader,
 };
@@ -56,80 +56,89 @@ Nodes: Vec<Node<'a>> = {
 
 Node: Vec<Node<'a>> = {
     Section  => <>,
-    Inverted => <>,
-    Parent   => <>,
-    Block    => <>,
-    Partial  => <>,
-    Variable => <>,
+    // Inverted => <>,
+    // Parent   => <>,
+    // Block    => <>,
+    // Partial  => <>,
+    Variable => vec![<>],
     Comment  => vec![<>],
     Eof      => vec![<>],
 }
 
 Section: Vec<Node<'a>> = {
     <text:"{{"> "#" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
-        balanced!("#", &name, &close.key, name.span(), {
+        balanced!("#", &name, &close.name, name.span(), {
             Ok(Node::section(layout.trim(text), name, nodes, close))
         })
     },
 }
 
-Inverted: Vec<Node<'a>> = {
-    <text:"{{"> "^" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
-        balanced!("^", &name, &close.key, name.span(), {
-            Ok(Node::inverted(layout.trim(text), name, nodes, close))
-        })
-    },
-}
+// Inverted: Vec<Node<'a>> = {
+//     <text:"{{"> "^" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+//         balanced!("^", &name, &close.key, name.span(), {
+//             Ok(Node::inverted(layout.trim(text), name, nodes, close))
+//         })
+//     },
+// }
 
-Block: Vec<Node<'a>> = {
-    <text:"{{"> "$" <key:Key> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
-        balanced!("$", &key, &close.key, key.span(), {
-            Ok(Node::block(layout.trim(text), key, nodes, close))
-        })
-    },
-}
+// Block: Vec<Node<'a>> = {
+//     <text:"{{"> "$" <name:Key> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+//         balanced!("$", &name, &close.key, key.span(), {
+//             Ok(Node::block(layout.trim(text), key, nodes, close))
+//         })
+//     },
+// }
 
-Parent: Vec<Node<'a>> = {
-    <text:"{{"> "<" "*" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
-        balanced!("<", &name, &close.key, name.span(), {
-            Ok(Node::dynamic_parent(layout.trim(text), name, nodes, close))
-        })
-    },
+// Parent: Vec<Node<'a>> = {
+//     <text:"{{"> "<" "*" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+//         balanced!("<", &name, &close.key, name.span(), {
+//             Ok(Node::dynamic_parent(layout.trim(text), name, nodes, close))
+//         })
+//     },
 
-    <text:"{{"> "<" <start:@L> <name:String> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
-        balanced!("<", &name, &close.key, (start, name).span(), {
-            let template = loader.get_template(name)?;
-            *size_hint += template.size_hint();
-            Ok(template.inherit_parent(layout.trim(text), nodes, close))
-        })
-    },
-}
+//     <text:"{{"> "<" <start:@L> <path:Path> <layout:"}}"> <nodes:Nodes?> <close:ClosePath> =>? {
+//         balanced!("<", &name, &close.key, (start, name).span(), {
+//             let template = loader.get_template(name)?;
+//             *size_hint += template.size_hint();
+//             Ok(template.inherit_parent(layout.rim(text), nodes, close))
+//         })
+//     },
+// }
 
-Partial: Vec<Node<'a>> = {
-    <text:"{{"> ">" "*" <name:Name> <layout:"}}"> => {
-        Node::dynamic_partial(layout.trim(text), name)
-    },
+// Partial: Vec<Node<'a>> = {
+//     <text:"{{"> ">" "*" <name:Name> <layout:"}}"> => {
+//         Node::dynamic_partial(layout.trim(text), name)
+//     },
 
-    <text:"{{"> ">" <name:String> <layout:"}}"> =>? {
-        let template = loader.get_template(name)?;
-        *size_hint += template.size_hint();
-        Ok(template.include_partial(layout.trim(text)))
-    },
-}
+//     <text:"{{"> ">" <path:Path> <layout:"}}"> =>? {
+//         let template = loader.get_template(name)?;
+//         *size_hint += template.size_hint();
+//         Ok(template.include_partial(layout.trim(text)))
+//     },
+// }
+
+// Closing: Node<'a> = {
+//     <text:"{{"> "/" <name:Name> <layout:"}}"> => {
+//         Node::closing(layout.trim(text), name)
+//     },
+// }
 
 Closing: Node<'a> = {
-    <text:"{{"> "/" <start:@L> <name:String> <layout:"}}"> =>
-        Node::closing(layout.trim(text), name, start),
+    <text:"{{"> "/" <path:Path> <layout:"}}"> => {
+        Node::closing(layout.trim(text), path)
+    },
 }
 
-Variable: Vec<Node<'a>> = {
+Variable: Node<'a> = {
     <text:"{{"> "{" <name:Name> "}}" => Node::unescaped(text, name),
     <text:"{{"> "&" <name:Name> "}}" => Node::unescaped(text, name),
     <text:"{{">     <name:Name> "}}" => Node::escaped(text, name),
 }
 
 Comment: Node<'a> = {
-    <text:"{{"> "!" String <layout:"}}"> => Node::content(layout.trim(text)),
+    <text:"{{"> "!" String <layout:"}}"> => {
+        Node::content(layout.trim(text))
+    },
 }
 
 Eof: Node<'a> = {
@@ -142,17 +151,26 @@ Eof: Node<'a> = {
 }
 
 Name: Name<'a> = {
-    <head:Key> <tail:("." <Key>)*> => {
-        Name::new(head, tail)
+    <start:@L> <head:"IDENT"> <mut keys:("." <"IDENT">)*> => {
+        keys.insert(0, head);
+        Name { start, keys }
     },
 
     <start:@L> "." => {
-        Name::new(Key::dot(start), Vec::new())
+        Name { start, keys: vec!["."] }
     },
 }
 
-Key: Key<'a> = {
-    <start:@L> <ident:"IDENT"> => Key::new(start, ident),
+Path: Name<'a> = {
+    <start:@L> <path:"STRING"> => {
+        Name { start, keys: vec![path] }
+    },
+}
+
+Key: Name<'a> = {
+    <start:@L> <key:"IDENT"> => {
+        Name { start, keys: vec![key] }
+    },
 }
 
 String: &'a str = {

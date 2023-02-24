@@ -8,8 +8,10 @@ use super::{
 use crate::{
     error::Error,
     template::{
+        Name,
         Node,
         Tag,
+        Template,
     },
 };
 
@@ -30,36 +32,19 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn fork(self, nodes: &'a [Node<'a>]) -> Self {
-        Self { nodes, ..self }
-    }
-
-    pub fn slice(self, range: Range<usize>) -> Self {
-        Self {
-            nodes: &self.nodes[range],
-            ..self
-        }
-    }
-
-    pub fn pop(self) -> Self {
-        Self {
-            stack: self.stack.pop(),
-            ..self
-        }
-    }
-
-    pub fn render(self, frame: &'a dyn Render, writer: &mut Writer) -> Result<(), Error> {
-        println!("pushing frame {:?}", frame);
-
-        // XXX: note to self about bugs of a christmas past; don't leak the
-        // `context.push(x).render(writer)` idiom, keep it opaque since it's
-        // incorrect but incredibly easy to accidentally do when implementing
-        // Render for new types - hence, always use `render` instead.
+    pub fn push(self, frame: &'a dyn Render) -> Self {
         Self {
             stack: self.stack.push(frame),
             ..self
         }
-        .render_to_writer(writer)
+    }
+
+    pub fn peek(&self) -> &dyn Render {
+        self.stack.peek()
+    }
+
+    pub fn render_inline(self, nodes: &'a [Node<'a>], writer: &mut Writer) -> Result<(), Error> {
+        Self { nodes, ..self }.render_to_writer(writer)
     }
 
     pub fn render_to_string(self, capacity: usize) -> Result<String, Error> {
@@ -82,28 +67,33 @@ impl<'a> Context<'a> {
 
             writer.write_unescaped(node.text)?;
 
-            println!("render_to_writer {:?} {} {:#?}", node.tag, node.key, self);
+            println!("{:?}", self.stack);
 
             match node.tag {
                 Tag::Escaped => {
-                    let found = self.stack.render_field_escaped(node.key, self, writer)?;
-                    if !found && self.raise {
-                        return Err(Error::MissingVariable(node.span(), node.key.into()));
+                    let found = self.stack.render_named_escaped(&node.name, self, writer)?;
+                    if !found {
+                        // return Err(Error::MissingVariable(node.span(), node.name.into()));
                     }
                 },
 
                 Tag::Unescaped => {
-                    let found = self.stack.render_field_unescaped(node.key, self, writer)?;
-                    if !found && self.raise {
-                        return Err(Error::MissingVariable(node.span(), node.key.into()));
+                    let found = self
+                        .stack
+                        .render_named_unescaped(&node.name, self, writer)?;
+                    if !found {
+                        // return Err(Error::MissingVariable(node.span(), node.name.into()));
                     }
                 },
 
                 Tag::Section => {
                     let children = node.children() as usize;
-                    self.stack.render_field_section(
-                        node.key,
-                        self.slice(index..index + children),
+                    self.stack.render_named_section(
+                        &node.name,
+                        Self {
+                            nodes: &self.nodes[index..index + children],
+                            ..self
+                        },
                         writer,
                     )?;
 
@@ -112,9 +102,12 @@ impl<'a> Context<'a> {
 
                 Tag::Inverted => {
                     let children = node.children() as usize;
-                    self.stack.render_field_inverted(
-                        node.key,
-                        self.slice(index..index + children),
+                    self.stack.render_named_inverted(
+                        &node.name,
+                        Self {
+                            nodes: &self.nodes[index..index + children],
+                            ..self
+                        },
                         writer,
                     )?;
 
@@ -130,6 +123,10 @@ impl<'a> Context<'a> {
                 Tag::Closing => {},
 
                 Tag::Content => {},
+
+                _ => {
+                    todo!()
+                },
             }
         }
 

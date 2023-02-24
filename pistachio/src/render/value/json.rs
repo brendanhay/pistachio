@@ -97,78 +97,78 @@ impl Render for Value {
     }
 
     #[inline]
-    fn render_field_escaped(
+    fn render_named_escaped(
         &self,
-        key: &str,
+        name: &[&str],
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        // println!("json:render_field_escaped {:?}", self);
+        // println!("json:render_named_escaped {:?}", self);
 
         match self {
-            Value::Null => ().render_field_escaped(key, context, writer),
-            Value::Bool(b) => b.render_field_escaped(key, context, writer),
-            Value::Number(n) => n.render_field_escaped(key, context, writer),
-            Value::String(s) => s.render_field_escaped(key, context, writer),
-            Value::Array(v) => v.render_field_escaped(key, context, writer),
-            Value::Object(m) => m.render_field_escaped(key, context, writer),
+            Value::Null => ().render_named_escaped(name, context, writer),
+            Value::Bool(b) => b.render_named_escaped(name, context, writer),
+            Value::Number(n) => n.render_named_escaped(name, context, writer),
+            Value::String(s) => s.render_named_escaped(name, context, writer),
+            Value::Array(v) => v.render_named_escaped(name, context, writer),
+            Value::Object(m) => m.render_named_escaped(name, context, writer),
         }
     }
 
     #[inline]
-    fn render_field_unescaped(
+    fn render_named_unescaped(
         &self,
-        key: &str,
+        name: &[&str],
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        // println!("json:render_field_unescaped {:?}", self);
+        // println!("json:render_named_unescaped {:?}", self);
 
         match self {
-            Value::Null => ().render_field_unescaped(key, context, writer),
-            Value::Bool(b) => b.render_field_unescaped(key, context, writer),
-            Value::Number(n) => n.render_field_unescaped(key, context, writer),
-            Value::String(s) => s.render_field_unescaped(key, context, writer),
-            Value::Array(v) => v.render_field_unescaped(key, context, writer),
-            Value::Object(m) => m.render_field_unescaped(key, context, writer),
+            Value::Null => ().render_named_unescaped(name, context, writer),
+            Value::Bool(b) => b.render_named_unescaped(name, context, writer),
+            Value::Number(n) => n.render_named_unescaped(name, context, writer),
+            Value::String(s) => s.render_named_unescaped(name, context, writer),
+            Value::Array(v) => v.render_named_unescaped(name, context, writer),
+            Value::Object(m) => m.render_named_unescaped(name, context, writer),
         }
     }
 
     #[inline]
-    fn render_field_section(
+    fn render_named_section(
         &self,
-        key: &str,
+        name: &[&str],
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        // println!("json:render_field_section {:?}", self);
+        // println!("json:render_named_section {:?}", self);
 
         match self {
-            Value::Null => ().render_field_section(key, context, writer),
-            Value::Bool(b) => b.render_field_section(key, context, writer),
-            Value::Number(n) => n.render_field_section(key, context, writer),
-            Value::String(s) => s.render_field_section(key, context, writer),
-            Value::Array(v) => v.render_field_section(key, context, writer),
-            Value::Object(m) => m.render_field_section(key, context, writer),
+            Value::Null => ().render_named_section(name, context, writer),
+            Value::Bool(b) => b.render_named_section(name, context, writer),
+            Value::Number(n) => n.render_named_section(name, context, writer),
+            Value::String(s) => s.render_named_section(name, context, writer),
+            Value::Array(v) => v.render_named_section(name, context, writer),
+            Value::Object(m) => m.render_named_section(name, context, writer),
         }
     }
 
     #[inline]
-    fn render_field_inverted(
+    fn render_named_inverted(
         &self,
-        key: &str,
+        name: &[&str],
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        // println!("json:render_field_inverted {} {:?}", key, self);
+        // println!("json:render_named_inverted {} {:?}", name, self);
 
         match self {
-            Value::Null => ().render_field_inverted(key, context, writer),
-            Value::Bool(b) => b.render_field_inverted(key, context, writer),
-            Value::Number(n) => n.render_field_inverted(key, context, writer),
-            Value::String(s) => s.render_field_inverted(key, context, writer),
-            Value::Array(v) => v.render_field_inverted(key, context, writer),
-            Value::Object(m) => m.render_field_inverted(key, context, writer),
+            Value::Null => ().render_named_inverted(name, context, writer),
+            Value::Bool(b) => b.render_named_inverted(name, context, writer),
+            Value::Number(n) => n.render_named_inverted(name, context, writer),
+            Value::String(s) => s.render_named_inverted(name, context, writer),
+            Value::Array(v) => v.render_named_inverted(name, context, writer),
+            Value::Object(m) => m.render_named_inverted(name, context, writer),
         }
     }
 }

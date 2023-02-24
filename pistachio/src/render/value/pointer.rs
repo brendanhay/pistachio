@@ -67,43 +67,43 @@ macro_rules! impl_pointers {
                 }
 
                 #[inline]
-                fn render_field_escaped(
+                fn render_named_escaped(
                     &self,
-                    key: &str,
+                    name: &[&str],
                     context: Context,
                     writer: &mut Writer,
                 ) -> Result<bool, Error> {
-                    self.deref().render_field_escaped(key, context, writer)
+                    self.deref().render_named_escaped(name, context, writer)
                 }
 
                 #[inline]
-                fn render_field_unescaped(
+                fn render_named_unescaped(
                     &self,
-                    key: &str,
+                    name: &[&str],
                     context: Context,
                     writer: &mut Writer,
                 ) -> Result<bool, Error> {
-                    self.deref().render_field_unescaped(key, context, writer)
+                    self.deref().render_named_unescaped(name, context, writer)
                 }
 
                 #[inline]
-                fn render_field_section(
+                fn render_named_section(
                     &self,
-                    key: &str,
+                    name: &[&str],
                     context: Context,
                     writer: &mut Writer,
                 ) -> Result<bool, Error> {
-                    self.deref().render_field_section(key, context, writer)
+                    self.deref().render_named_section(name, context, writer)
                 }
 
                 #[inline]
-                fn render_field_inverted(
+                fn render_named_inverted(
                     &self,
-                    key: &str,
+                    name: &[&str],
                     context: Context,
                     writer: &mut Writer,
                 ) -> Result<bool, Error> {
-                    self.deref().render_field_inverted(key, context, writer)
+                    self.deref().render_named_inverted(name, context, writer)
                 }
             }
         )*

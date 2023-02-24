@@ -3,15 +3,11 @@ use std::fmt;
 pub use self::{
     context::Context,
     stack::Stack,
-    value::Source,
     writer::Writer,
 };
 use crate::{
     error::Error,
-    template::{
-        Key,
-        Template,
-    },
+    template::Template,
 };
 
 mod context;
@@ -53,7 +49,7 @@ pub trait Render: fmt::Debug {
         println!("default:render_section {:?}", self);
 
         if self.is_truthy() {
-            context.render(&self, writer)
+            context.render_to_writer(writer)
         } else {
             Ok(())
         }
@@ -64,53 +60,71 @@ pub trait Render: fmt::Debug {
         println!("default:render_inverted {:?}", self);
 
         if !self.is_truthy() {
-            context.render(&self, writer)
+            context.render_to_writer(writer)
         } else {
             Ok(())
         }
     }
 
+    /// XXX: throw missing variable errors by default?
+
     #[inline]
-    fn render_field_escaped(
+    fn render_named_escaped(
         &self,
-        key: &str,
+        name: &[&str],
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        println!("default:render_field_escaped {:?}", self);
-        Ok(false)
+        // If the name is empty the stack is fully prepared.
+        if name.is_empty() {
+            self.render_escaped(context, writer).map(|_| true)
+        } else {
+            Ok(false)
+        }
     }
 
     #[inline]
-    fn render_field_unescaped(
+    fn render_named_unescaped(
         &self,
-        key: &str,
+        name: &[&str],
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        println!("default:render_field_unescaped {:?}", self);
-        Ok(false)
+        // If the name is empty the stack is fully prepared.
+        if name.is_empty() {
+            self.render_unescaped(context, writer).map(|_| true)
+        } else {
+            Ok(false)
+        }
     }
 
     #[inline]
-    fn render_field_section(
+    fn render_named_section(
         &self,
-        key: &str,
+        name: &[&str],
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        println!("default:render_field_section {:?}", self);
-        Ok(false)
+        // If the name is empty the stack is fully prepared.
+        if name.is_empty() {
+            self.render_section(context, writer).map(|_| true)
+        } else {
+            Ok(false)
+        }
     }
 
     #[inline]
-    fn render_field_inverted(
+    fn render_named_inverted(
         &self,
-        key: &str,
+        name: &[&str],
         context: Context,
         writer: &mut Writer,
     ) -> Result<bool, Error> {
-        println!("default:render_field_inverted {:?}", self);
-        Ok(false)
+        // If the name is empty the stack is fully prepared.
+        if name.is_empty() {
+            self.render_inverted(context, writer).map(|_| true)
+        } else {
+            Ok(false)
+        }
     }
 }
