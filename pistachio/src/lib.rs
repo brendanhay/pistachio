@@ -1,5 +1,7 @@
 #![feature(pattern)]
+#![feature(iter_intersperse)]
 #![warn(clippy::disallowed_types)]
+
 use std::{
     borrow::Cow,
     collections::hash_map::Entry,

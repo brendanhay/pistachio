@@ -131,15 +131,15 @@ fn test_spec_sections() {
     Spec::run("spec/specs/sections.json")
 }
 
-// #[test]
-// fn test_spec_inverted() {
-//     Spec::run("spec/specs/inverted.json")
-// }
+#[test]
+fn test_spec_inverted() {
+    Spec::run("spec/specs/inverted.json")
+}
 
-// #[test]
-// fn test_spec_comments() {
-//     Spec::run("spec/specs/comments.json")
-// }
+#[test]
+fn test_spec_comments() {
+    Spec::run("spec/specs/comments.json")
+}
 
 // #[test]
 // fn test_spec_partials() {

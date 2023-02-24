@@ -395,6 +395,7 @@ fn print_tokens() {
     // let source = " | {{#boolean}} {{! Important Whitespace }}\n {{/boolean}} | \n";
     let source = "|\r\n{{#boolean}}\r\n{{/boolean}}\r\n|";
     let source = r#""{{person.name}}" == "{{#person}}{{name}}{{/person}}""#;
+    let source = "{{#a.b.c}}Here{{/a.b.c}}";
     let lexer = Lexer::new(source);
     let tokens = lexer.collect::<Vec<_>>();
 

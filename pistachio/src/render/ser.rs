@@ -26,7 +26,9 @@ use crate::{
 
 pub struct Serializer;
 
+#[derive(Debug, Default)]
 pub enum Variable {
+    #[default]
     Null,
     Bool(bool),
     Number(String),
@@ -34,6 +36,12 @@ pub enum Variable {
     Vec(Vec<Variable>),
     Map(map::Map<Cow<'static, str>, Variable>),
     // Fun()
+}
+
+impl Default for &Variable {
+    fn default() -> Self {
+        &Variable::Null
+    }
 }
 
 pub fn to_variable<T>(value: T) -> Result<Variable, Error>

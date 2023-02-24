@@ -56,7 +56,7 @@ Nodes: Vec<Node<'a>> = {
 
 Node: Vec<Node<'a>> = {
     Section  => <>,
-    // Inverted => <>,
+    Inverted => <>,
     // Parent   => <>,
     // Block    => <>,
     // Partial  => <>,
@@ -73,13 +73,13 @@ Section: Vec<Node<'a>> = {
     },
 }
 
-// Inverted: Vec<Node<'a>> = {
-//     <text:"{{"> "^" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
-//         balanced!("^", &name, &close.key, name.span(), {
-//             Ok(Node::inverted(layout.trim(text), name, nodes, close))
-//         })
-//     },
-// }
+Inverted: Vec<Node<'a>> = {
+    <text:"{{"> "^" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+        balanced!("^", &name, &close.name, name.span(), {
+            Ok(Node::inverted(layout.trim(text), name, nodes, close))
+        })
+    },
+}
 
 // Block: Vec<Node<'a>> = {
 //     <text:"{{"> "$" <name:Key> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
@@ -163,7 +163,7 @@ Name: Name<'a> = {
 
 Path: Name<'a> = {
     <start:@L> <path:"STRING"> => {
-        Name { start, keys: vec![path] }
+        Name { start, keys: vec![path.trim()] }
     },
 }
 

@@ -5,6 +5,8 @@ use std::{
     iter,
 };
 
+use serde::Serialize;
+
 use crate::{
     lexer::Lexer,
     map,
@@ -13,6 +15,7 @@ use crate::{
         Spanned,
     },
     render::{
+        to_variable,
         Context,
         Render,
         Writer,
@@ -41,10 +44,6 @@ impl<'a> Template<'a> {
 
     pub fn size_hint(&self) -> usize {
         self.size_hint
-    }
-
-    pub(crate) fn nodes(&self) -> &[Node] {
-        &self.nodes
     }
 
     pub fn source(&self) -> &str {
@@ -80,26 +79,32 @@ impl<'a> Template<'a> {
         })
     }
 
-    pub fn render<T>(&self, vars: &T) -> Result<String, Error>
+    pub fn render<T>(&self, value: T) -> Result<String, Error>
     where
-        T: Render,
+        T: Serialize,
     {
-        let mut capacity = vars.size_hint(self);
+        let vars = to_variable(value)?;
+        let mut capacity = self.size_hint + vars.size_hint();
 
         // Add 25% for escaping and various expansions.
         capacity += capacity / 4;
 
-        Context::new(self.raise, &self.nodes, &vars).render_to_string(capacity)
+        Context::new(self.raise, &self.nodes)
+            .push(&vars)
+            .render(capacity)
     }
 
-    pub fn render_to_writer<T, W>(&self, vars: &T, writer: &mut W) -> Result<(), Error>
+    pub fn render_to_writer<T, W>(&self, value: T, writer: &mut W) -> Result<(), Error>
     where
-        T: Render,
+        T: Serialize,
         W: io::Write,
     {
+        let vars = to_variable(value)?;
         let mut writer = Writer::new(writer);
 
-        Context::new(self.raise, &self.nodes, &vars).render_to_writer(&mut writer)?;
+        Context::new(self.raise, &self.nodes)
+            .push(&vars)
+            .render_to_writer(&mut writer)?;
 
         Ok(())
     }
@@ -251,14 +256,24 @@ impl<'a> Node<'a> {
         .collect()
     }
 
-    // pub fn inverted(
-    //     text: &'a str,
-    //     name: Name<'a>,
-    //     nodes: Option<Vec<Node<'a>>>,
-    //     close: Node<'a>,
-    // ) -> Vec<Node<'a>> {
-    //     name.explode(text, Tag::Inverted, Tag::Inverted, nodes, Some(close))
-    // }
+    pub fn inverted(
+        text: &'a str,
+        name: Name<'a>,
+        nodes: Option<Vec<Node<'a>>>,
+        close: Node<'a>,
+    ) -> Vec<Node<'a>> {
+        let children = (nodes.as_deref().map(|nodes| nodes.len()).unwrap_or(0) + 1) as u32;
+
+        iter::once(Self {
+            text,
+            tag: Tag::Inverted,
+            name,
+            children,
+        })
+        .chain(nodes.into_iter().flatten())
+        .chain(iter::once(close))
+        .collect()
+    }
 
     // pub fn block(
     //     text: &'a str,
@@ -323,9 +338,15 @@ pub struct Name<'a> {
     pub keys: Vec<&'a str>,
 }
 
+// The lexer emits unparsed closing tags so we can error if the tags are
+// unbalanced, which is more useful than a "failed expecting . | IDENT"
+// when parsing a closing tag style error.
 impl PartialEq<Name<'_>> for Name<'_> {
     fn eq(&self, other: &Name<'_>) -> bool {
-        self.keys == other.keys
+        println!("{:?} == {:?}", &self, &other);
+
+        // Normalize
+        self.keys.join(".").eq(&other.keys.join("."))
     }
 }
 

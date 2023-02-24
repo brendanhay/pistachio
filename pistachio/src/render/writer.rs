@@ -1,41 +1,34 @@
-use std::{
-    fmt,
-    io,
-};
+use std::io;
 
 use crate::error::Error;
 
-pub struct Writer<'a> {
-    inner: &'a mut dyn io::Write,
+pub trait WriteEscaped {
+    fn write_escaped(&mut self, string: &str) -> Result<(), Error>;
+
+    fn write_unescaped(&mut self, string: &str) -> Result<(), Error>;
 }
 
-impl<'a> Writer<'a> {
-    #[inline]
-    pub fn new(inner: &'a mut impl io::Write) -> Self {
-        Self { inner }
-    }
+pub struct Writer<W> {
+    inner: W,
+}
 
+impl<W: io::Write> WriteEscaped for Writer<W> {
     #[inline]
-    pub fn write_escaped(&mut self, string: &str) -> Result<(), Error> {
+    fn write_escaped(&mut self, string: &str) -> Result<(), Error> {
         self.write_escaped_bytes(string.as_bytes())
             .map_err(Error::Io)
     }
 
     #[inline]
-    pub fn write_unescaped(&mut self, string: &str) -> Result<(), Error> {
+    fn write_unescaped(&mut self, string: &str) -> Result<(), Error> {
         self.inner.write_all(string.as_bytes()).map_err(Error::Io)
     }
+}
 
+impl<W: io::Write> Writer<W> {
     #[inline]
-    pub fn format_escaped(&mut self, display: impl fmt::Display) -> Result<(), Error> {
-        use io::Write as _;
-
-        write!(self, "{}", display).map_err(Error::Io)
-    }
-
-    #[inline]
-    pub fn format_unescaped(&mut self, display: impl fmt::Display) -> Result<(), Error> {
-        write!(self.inner, "{}", display).map_err(Error::Io)
+    pub fn new(inner: W) -> Self {
+        Self { inner }
     }
 
     #[inline]
@@ -63,24 +56,6 @@ impl<'a> Writer<'a> {
         }
 
         self.inner.write_all(&bytes[start..])
-    }
-}
-
-// This impl implicitly escapes everything.
-impl io::Write for Writer<'_> {
-    #[inline]
-    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-        self.write_escaped_bytes(bytes).map(|()| bytes.len())
-    }
-
-    #[inline]
-    fn write_all(&mut self, bytes: &[u8]) -> io::Result<()> {
-        self.write_escaped_bytes(bytes)
-    }
-
-    #[inline]
-    fn flush(&mut self) -> io::Result<()> {
-        self.inner.flush()
     }
 }
 
