@@ -1,5 +1,4 @@
 #![feature(pattern)]
-#![feature(iter_intersperse)]
 #![warn(clippy::disallowed_types)]
 
 use std::{
@@ -16,15 +15,6 @@ use std::{
     },
 };
 
-#[cfg(feature = "derive")]
-pub use pistachio_derive::Render;
-
-// #[cfg(feature = "serde_json")]
-// pub use serde_json::{
-//     json,
-//     Value,
-// };
-//
 pub use self::{
     error::Error,
     map::Map,
@@ -32,15 +22,11 @@ pub use self::{
     render::{
         Context,
         Render,
-        Source,
         WriteEscaped,
         Writer,
     },
     template::Template,
-    variable::{
-        to_variable,
-        Variable,
-    },
+    variable::Var,
 };
 
 mod error;

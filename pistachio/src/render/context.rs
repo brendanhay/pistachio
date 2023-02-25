@@ -3,7 +3,7 @@ use std::ops::Range;
 use super::{
     Render,
     Stack,
-    Variable,
+    Var,
     WriteEscaped,
     Writer,
 };
@@ -32,7 +32,7 @@ macro_rules! bug {
 }
 
 /// The mustache context containing the execution stack and current sub-tree of nodes.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Context<'a> {
     stack: Stack<'a>,
     nodes: &'a [Node<'a>],
@@ -62,7 +62,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn push(self, frame: &'a Variable) -> Self {
+    pub fn push(self, frame: Var<'a>) -> Self {
         Self {
             stack: self.stack.push(frame),
             ..self
@@ -93,34 +93,32 @@ impl<'a> Context<'a> {
                 Tag::Escaped => {
                     match self.stack.resolve(&node.name) {
                         None => {}, // return Err(Error::MissingVariable(node.span(), node.name.into()));
-                        Some(var) => match var {
-                            Variable::Null => {},
-                            Variable::Bool(b) => b.render_escaped(self, writer)?,
-                            Variable::Number(n) => n.render_escaped(self, writer)?,
-                            Variable::String(s) => s.render_escaped(self, writer)?,
-                            Variable::Nullary(f) => f().render_escaped(self, writer)?,
+                        Some(var) => var.render_escaped(self, writer)?,
+                        // Variable::Null => {},
+                        // Variable::Bool(b) => b.render_escaped(self, writer)?,
+                        // Variable::Number(n) => n.render_escaped(self, writer)?,
+                        // Variable::String(s) => s.render_escaped(self, writer)?,
+                        // Variable::Nullary(f) => f().render_escaped(self, writer)?,
 
-                            _ => {
-                                bug!("render_escaped: unexpected value {:?}", var);
-                            },
-                        },
+                        // _ => {
+                        //     bug!("render_escaped: unexpected value {:?}", var);
+                        // },
                     }
                 },
 
                 Tag::Unescaped => {
                     match self.stack.resolve(&node.name) {
                         None => {}, // return Err(Error::MissingVariable(node.span(), node.name.into()));
-                        Some(var) => match var {
-                            Variable::Null => {},
-                            Variable::Bool(b) => b.render_unescaped(self, writer)?,
-                            Variable::Number(n) => n.render_unescaped(self, writer)?,
-                            Variable::String(s) => s.render_unescaped(self, writer)?,
-                            Variable::Nullary(f) => f().render_unescaped(self, writer)?,
+                        Some(var) => var.render_unescaped(self, writer)?,
+                        // Variable::Null => {},
+                        // Variable::Bool(b) => b.render_unescaped(self, writer)?,
+                        // Variable::Number(n) => n.render_unescaped(self, writer)?,
+                        // Variable::String(s) => s.render_unescaped(self, writer)?,
+                        // Variable::Nullary(f) => f().render_unescaped(self, writer)?,
 
-                            _ => {
-                                bug!("render_unescaped: unexpected value {:?}", var);
-                            },
-                        },
+                        // _ => {
+                        //     bug!("render_unescaped: unexpected value {:?}", var);
+                        // },
                     }
                 },
 
@@ -132,27 +130,28 @@ impl<'a> Context<'a> {
                         Some(var) if !var.is_truthy() => {},
                         Some(var) => {
                             let slice = self.slice(index..index + children);
+                            var.render_section(slice, writer)?;
 
-                            match var {
-                                Variable::Null => {},
-                                Variable::Bool(_) => slice.render_to_writer(writer)?,
-                                Variable::Number(_) => slice.push(var).render_to_writer(writer)?,
-                                Variable::String(_) => slice.push(var).render_to_writer(writer)?,
-                                Variable::Map(_) => slice.push(var).render_to_writer(writer)?,
-                                Variable::Vec(v) => {
-                                    for item in v.iter() {
-                                        slice.push(item).render_to_writer(writer)?;
-                                    }
-                                },
-                                Variable::Unary(f) => {
-                                    let args = slice.render(var.size_hint())?;
-                                    f(args).render_escaped(self, writer)?;
-                                },
+                            // match var {
+                            //     Variable::Null => {},
+                            //     Variable::Bool(_) => slice.render_to_writer(writer)?,
+                            //     Variable::Number(_) => slice.push(var).render_to_writer(writer)?,
+                            //     Variable::String(_) => slice.push(var).render_to_writer(writer)?,
+                            //     Variable::Map(_) => slice.push(var).render_to_writer(writer)?,
+                            //     Variable::Vec(v) => {
+                            //         for item in v.iter() {
+                            //             slice.push(item).render_to_writer(writer)?;
+                            //         }
+                            //     },
+                            //     Variable::Unary(f) => {
+                            //         let args = slice.render(var.size_hint())?;
+                            //         f(args).render_escaped(self, writer)?;
+                            //     },
 
-                                _ => {
-                                    bug!("render_unescaped: unexpected value {:?}", var);
-                                },
-                            }
+                            //     _ => {
+                            //         bug!("render_unescaped: unexpected value {:?}", var);
+                            //     },
+                            // }
                         },
                     }
 

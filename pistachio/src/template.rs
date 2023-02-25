@@ -15,9 +15,9 @@ use crate::{
     },
     render::{
         Context,
+        Render,
         Writer,
     },
-    to_variable,
     Error,
     Loader,
     LoadingDisabled,
@@ -86,32 +86,29 @@ impl<'a> Template<'a> {
 
     pub fn render<T>(&self, value: T) -> Result<String, Error>
     where
-        T: Serialize,
+        T: Render,
     {
-        let vars = to_variable(value)?;
-        let mut capacity = self.size_hint + vars.size_hint();
+        let mut capacity = self.size_hint + value.size_hint();
 
         // Add 25% for escaping and various expansions.
         capacity += capacity / 4;
 
         Context::new(self.raise, &self.nodes)
-            .push(&vars)
+            .push(&value)
             .render(capacity)
     }
 
     pub fn render_to_writer<T, W>(&self, value: T, writer: &mut W) -> Result<(), Error>
     where
-        T: Serialize,
+        T: Render,
         W: io::Write,
     {
-        let vars = to_variable(value)?;
+        // let vars = to_variable(value)?;
         let mut writer = Writer::new(writer);
 
         Context::new(self.raise, &self.nodes)
-            .push(&vars)
-            .render_to_writer(&mut writer)?;
-
-        Ok(())
+            .push(&value)
+            .render_to_writer(&mut writer)
     }
 
     // pub(crate) fn include_partial(&self, text: &'a str) -> Vec<Node<'a>> {

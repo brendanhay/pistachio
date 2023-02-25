@@ -306,6 +306,7 @@ dependencies = [
  "lalrpop-util",
  "ryu",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

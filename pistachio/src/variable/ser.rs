@@ -8,7 +8,7 @@ use serde::{
     Serialize,
 };
 
-use super::Variable;
+use super::Var;
 use crate::{
     map,
     Error,
@@ -17,7 +17,7 @@ use crate::{
 
 pub struct Serializer;
 
-pub fn to_variable<T>(value: T) -> Result<Variable, Error>
+pub fn to_variable<T>(value: T) -> Result<Var, Error>
 where
     T: Serialize,
 {
@@ -25,7 +25,7 @@ where
 }
 
 impl serde::Serializer for Serializer {
-    type Ok = Variable;
+    type Ok = Var;
     type Error = Error;
 
     type SerializeSeq = SerializeVec;
@@ -37,75 +37,67 @@ impl serde::Serializer for Serializer {
     type SerializeStructVariant = SerializeStructVariant;
 
     #[inline]
-    fn serialize_bool(self, value: bool) -> Result<Variable, Error> {
-        Ok(Variable::Bool(value))
+    fn serialize_bool(self, value: bool) -> Result<Var, Error> {
+        Ok(Var::Bool(value))
     }
 
     #[inline]
-    fn serialize_i8(self, value: i8) -> Result<Variable, Error> {
+    fn serialize_i8(self, value: i8) -> Result<Var, Error> {
         self.serialize_i64(value as i64)
     }
 
     #[inline]
-    fn serialize_i16(self, value: i16) -> Result<Variable, Error> {
+    fn serialize_i16(self, value: i16) -> Result<Var, Error> {
         self.serialize_i64(value as i64)
     }
 
     #[inline]
-    fn serialize_i32(self, value: i32) -> Result<Variable, Error> {
+    fn serialize_i32(self, value: i32) -> Result<Var, Error> {
         self.serialize_i64(value as i64)
     }
 
-    fn serialize_i64(self, value: i64) -> Result<Variable, Error> {
-        Ok(Variable::Number(
-            itoa::Buffer::new().format(value).to_owned(),
-        ))
+    fn serialize_i64(self, value: i64) -> Result<Var, Error> {
+        Ok(Var::Number(itoa::Buffer::new().format(value).to_owned()))
     }
 
-    fn serialize_i128(self, value: i128) -> Result<Variable, Error> {
-        Ok(Variable::Number(
-            itoa::Buffer::new().format(value).to_owned(),
-        ))
+    fn serialize_i128(self, value: i128) -> Result<Var, Error> {
+        Ok(Var::Number(itoa::Buffer::new().format(value).to_owned()))
     }
 
     #[inline]
-    fn serialize_u8(self, value: u8) -> Result<Variable, Error> {
+    fn serialize_u8(self, value: u8) -> Result<Var, Error> {
         self.serialize_u64(value as u64)
     }
 
     #[inline]
-    fn serialize_u16(self, value: u16) -> Result<Variable, Error> {
+    fn serialize_u16(self, value: u16) -> Result<Var, Error> {
         self.serialize_u64(value as u64)
     }
 
     #[inline]
-    fn serialize_u32(self, value: u32) -> Result<Variable, Error> {
+    fn serialize_u32(self, value: u32) -> Result<Var, Error> {
         self.serialize_u64(value as u64)
     }
 
     #[inline]
-    fn serialize_u64(self, value: u64) -> Result<Variable, Error> {
-        Ok(Variable::Number(
-            itoa::Buffer::new().format(value).to_owned(),
-        ))
+    fn serialize_u64(self, value: u64) -> Result<Var, Error> {
+        Ok(Var::Number(itoa::Buffer::new().format(value).to_owned()))
     }
 
-    fn serialize_u128(self, value: u128) -> Result<Variable, Error> {
-        Ok(Variable::Number(
-            itoa::Buffer::new().format(value).to_owned(),
-        ))
+    fn serialize_u128(self, value: u128) -> Result<Var, Error> {
+        Ok(Var::Number(itoa::Buffer::new().format(value).to_owned()))
     }
 
     // ryu::Buffer::new().format_finite(f).to_owned()
     #[inline]
-    fn serialize_f32(self, value: f32) -> Result<Variable, Error> {
+    fn serialize_f32(self, value: f32) -> Result<Var, Error> {
         self.serialize_f64(value as f64)
     }
 
     #[inline]
-    fn serialize_f64(self, value: f64) -> Result<Variable, Error> {
+    fn serialize_f64(self, value: f64) -> Result<Var, Error> {
         if value.is_finite() {
-            Ok(Variable::Number(
+            Ok(Var::Number(
                 ryu::Buffer::new().format_finite(value).to_owned(),
             ))
         } else {
@@ -114,32 +106,32 @@ impl serde::Serializer for Serializer {
     }
 
     #[inline]
-    fn serialize_char(self, value: char) -> Result<Variable, Error> {
+    fn serialize_char(self, value: char) -> Result<Var, Error> {
         let mut s = String::new();
         s.push(value);
-        Ok(Variable::String(s.into()))
+        Ok(Var::String(s.into()))
     }
 
     #[inline]
-    fn serialize_str(self, value: &str) -> Result<Variable, Error> {
-        Ok(Variable::String(value.into()))
+    fn serialize_str(self, value: &str) -> Result<Var, Error> {
+        Ok(Var::String(value.into()))
     }
 
-    fn serialize_bytes(self, value: &[u8]) -> Result<Variable, Error> {
+    fn serialize_bytes(self, value: &[u8]) -> Result<Var, Error> {
         let vec = value
             .iter()
-            .map(|&b| Variable::Number(itoa::Buffer::new().format(b).to_owned()))
+            .map(|&b| Var::Number(itoa::Buffer::new().format(b).to_owned()))
             .collect();
-        Ok(Variable::Vec(vec))
+        Ok(Var::Vec(vec))
     }
 
     #[inline]
-    fn serialize_unit(self) -> Result<Variable, Error> {
-        Ok(Variable::Null)
+    fn serialize_unit(self) -> Result<Var, Error> {
+        Ok(Var::Null)
     }
 
     #[inline]
-    fn serialize_unit_struct(self, _name: &'static str) -> Result<Variable, Error> {
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<Var, Error> {
         self.serialize_unit()
     }
 
@@ -149,12 +141,12 @@ impl serde::Serializer for Serializer {
         _name: &'static str,
         _variant_index: u32,
         variant: &'static str,
-    ) -> Result<Variable, Error> {
+    ) -> Result<Var, Error> {
         self.serialize_str(variant)
     }
 
     #[inline]
-    fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<Variable, Error>
+    fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<Var, Error>
     where
         T: ?Sized + Serialize,
     {
@@ -167,7 +159,7 @@ impl serde::Serializer for Serializer {
         _variant_index: u32,
         variant: &'static str,
         value: &T,
-    ) -> Result<Variable, Error>
+    ) -> Result<Var, Error>
     where
         T: ?Sized + Serialize,
     {
@@ -175,16 +167,16 @@ impl serde::Serializer for Serializer {
 
         values.insert(variant.into(), to_variable(value)?);
 
-        Ok(Variable::Map(values))
+        Ok(Var::Map(values))
     }
 
     #[inline]
-    fn serialize_none(self) -> Result<Variable, Error> {
+    fn serialize_none(self) -> Result<Var, Error> {
         self.serialize_unit()
     }
 
     #[inline]
-    fn serialize_some<T>(self, value: &T) -> Result<Variable, Error>
+    fn serialize_some<T>(self, value: &T) -> Result<Var, Error>
     where
         T: ?Sized + Serialize,
     {
@@ -250,20 +242,20 @@ impl serde::Serializer for Serializer {
         })
     }
 
-    fn collect_str<T>(self, value: &T) -> Result<Variable, Error>
+    fn collect_str<T>(self, value: &T) -> Result<Var, Error>
     where
         T: ?Sized + fmt::Display,
     {
-        Ok(Variable::String(value.to_string().into()))
+        Ok(Var::String(value.to_string().into()))
     }
 }
 
 pub struct SerializeVec {
-    vec: Vec<Variable>,
+    vec: Vec<Var>,
 }
 
 impl serde::ser::SerializeSeq for SerializeVec {
-    type Ok = Variable;
+    type Ok = Var;
     type Error = Error;
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<(), Error>
@@ -274,13 +266,13 @@ impl serde::ser::SerializeSeq for SerializeVec {
         Ok(())
     }
 
-    fn end(self) -> Result<Variable, Error> {
-        Ok(Variable::Vec(self.vec))
+    fn end(self) -> Result<Var, Error> {
+        Ok(Var::Vec(self.vec))
     }
 }
 
 impl serde::ser::SerializeTuple for SerializeVec {
-    type Ok = Variable;
+    type Ok = Var;
     type Error = Error;
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<(), Error>
@@ -290,13 +282,13 @@ impl serde::ser::SerializeTuple for SerializeVec {
         serde::ser::SerializeSeq::serialize_element(self, value)
     }
 
-    fn end(self) -> Result<Variable, Error> {
+    fn end(self) -> Result<Var, Error> {
         serde::ser::SerializeSeq::end(self)
     }
 }
 
 impl serde::ser::SerializeTupleStruct for SerializeVec {
-    type Ok = Variable;
+    type Ok = Var;
     type Error = Error;
 
     fn serialize_field<T>(&mut self, value: &T) -> Result<(), Error>
@@ -306,18 +298,18 @@ impl serde::ser::SerializeTupleStruct for SerializeVec {
         serde::ser::SerializeSeq::serialize_element(self, value)
     }
 
-    fn end(self) -> Result<Variable, Error> {
+    fn end(self) -> Result<Var, Error> {
         serde::ser::SerializeSeq::end(self)
     }
 }
 
 pub struct SerializeTupleVariant {
     name: &'static str,
-    vec: Vec<Variable>,
+    vec: Vec<Var>,
 }
 
 impl serde::ser::SerializeTupleVariant for SerializeTupleVariant {
-    type Ok = Variable;
+    type Ok = Var;
     type Error = Error;
 
     fn serialize_field<T>(&mut self, value: &T) -> Result<(), Error>
@@ -329,22 +321,22 @@ impl serde::ser::SerializeTupleVariant for SerializeTupleVariant {
         Ok(())
     }
 
-    fn end(self) -> Result<Variable, Error> {
+    fn end(self) -> Result<Var, Error> {
         let mut map = map::with_capacity(1);
 
-        map.insert(self.name.into(), Variable::Vec(self.vec));
+        map.insert(self.name.into(), Var::Vec(self.vec));
 
-        Ok(Variable::Map(map))
+        Ok(Var::Map(map))
     }
 }
 
 pub struct SerializeMap {
-    map: Map<Cow<'static, str>, Variable>,
+    map: Map<Cow<'static, str>, Var>,
     next_key: Option<Cow<'static, str>>,
 }
 
 impl serde::ser::SerializeMap for SerializeMap {
-    type Ok = Variable;
+    type Ok = Var;
     type Error = Error;
 
     fn serialize_key<T>(&mut self, key: &T) -> Result<(), Error>
@@ -373,8 +365,8 @@ impl serde::ser::SerializeMap for SerializeMap {
         Ok(())
     }
 
-    fn end(self) -> Result<Variable, Error> {
-        Ok(Variable::Map(self.map))
+    fn end(self) -> Result<Var, Error> {
+        Ok(Var::Map(self.map))
     }
 }
 
@@ -568,7 +560,7 @@ impl serde::Serializer for MapKeySerializer {
 }
 
 impl serde::ser::SerializeStruct for SerializeMap {
-    type Ok = Variable;
+    type Ok = Var;
     type Error = Error;
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Error>
@@ -578,18 +570,18 @@ impl serde::ser::SerializeStruct for SerializeMap {
         serde::ser::SerializeMap::serialize_entry(self, key, value)
     }
 
-    fn end(self) -> Result<Variable, Error> {
+    fn end(self) -> Result<Var, Error> {
         serde::ser::SerializeMap::end(self)
     }
 }
 
 pub struct SerializeStructVariant {
     name: &'static str,
-    map: Map<Cow<'static, str>, Variable>,
+    map: Map<Cow<'static, str>, Var>,
 }
 
 impl serde::ser::SerializeStructVariant for SerializeStructVariant {
-    type Ok = Variable;
+    type Ok = Var;
     type Error = Error;
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Error>
@@ -600,11 +592,11 @@ impl serde::ser::SerializeStructVariant for SerializeStructVariant {
         Ok(())
     }
 
-    fn end(self) -> Result<Variable, Error> {
+    fn end(self) -> Result<Var, Error> {
         let mut map = map::with_capacity(1);
 
-        map.insert(self.name.into(), Variable::Map(self.map));
+        map.insert(self.name.into(), Var::Map(self.map));
 
-        Ok(Variable::Map(map))
+        Ok(Var::Map(map))
     }
 }

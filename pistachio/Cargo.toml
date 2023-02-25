@@ -15,6 +15,7 @@ lalrpop-util = { version = "0.19", default-features = false }
 serde = { version = "1", default-features = false }
 ryu = "1"
 itoa = "1"
+serde_json = "1.0.93"
 
 [build-dependencies]
 lalrpop = { version = "0.19", default-features = false }
