@@ -1,13 +1,13 @@
 use std::ops::Range;
 
 use super::{
-    Render,
     Stack,
     Var,
     WriteEscaped,
     Writer,
 };
 use crate::{
+    parser::Spanned,
     template::{
         Node,
         Tag,
@@ -15,21 +15,6 @@ use crate::{
     },
     Error,
 };
-
-macro_rules! bug {
-    ($msg:expr) => ({
-        bug!("{}", $msg)
-    });
-    ($fmt:expr, $($arg:tt)+) => ({
-        panic!(
-            concat!("bug: ",
-                    $fmt,
-                    ". Please report this issue on GitHub if you find \
-                    an input that triggers this case."),
-            $($arg)*
-        )
-    });
-}
 
 /// The mustache context containing the execution stack and current sub-tree of nodes.
 #[derive(Clone, Copy)]
@@ -92,7 +77,13 @@ impl<'a> Context<'a> {
             match node.tag {
                 Tag::Escaped => {
                     match self.stack.resolve(&node.name) {
-                        None => {}, // return Err(Error::MissingVariable(node.span(), node.name.into()));
+                        None if self.raise => {
+                            return Err(Error::MissingVariable(
+                                node.name.span(),
+                                node.name.to_string(),
+                            ))
+                        },
+                        None => {},
                         Some(var) => var.render_escaped(self, writer)?,
                         // Variable::Null => {},
                         // Variable::Bool(b) => b.render_escaped(self, writer)?,
@@ -108,7 +99,13 @@ impl<'a> Context<'a> {
 
                 Tag::Unescaped => {
                     match self.stack.resolve(&node.name) {
-                        None => {}, // return Err(Error::MissingVariable(node.span(), node.name.into()));
+                        None if self.raise => {
+                            return Err(Error::MissingVariable(
+                                node.name.span(),
+                                node.name.to_string(),
+                            ))
+                        },
+                        None => {},
                         Some(var) => var.render_unescaped(self, writer)?,
                         // Variable::Null => {},
                         // Variable::Bool(b) => b.render_unescaped(self, writer)?,

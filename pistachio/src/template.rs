@@ -201,7 +201,7 @@ pub struct Node<'a> {
     pub tag: Tag,
     /// Dotted key identifiers, like `foo.bar.baz`.
     pub name: Name<'a>,
-    /// The number of child sub-nodes below to this node.
+    /// The number of child sub-nodes below this tag.
     children: u32,
 }
 
@@ -340,6 +340,13 @@ pub struct Name<'a> {
     pub keys: Vec<&'a str>,
 }
 
+impl Name<'_> {
+    #[inline]
+    pub fn is_dot(&self) -> bool {
+        self.keys.len() == 1 && self.keys[0] == "."
+    }
+}
+
 // The lexer emits unparsed closing tags so we can error if the tags are
 // unbalanced, which is more useful than a "failed expecting . | IDENT"
 // when parsing a closing tag style error.
@@ -355,17 +362,16 @@ impl PartialEq<Name<'_>> for Name<'_> {
 // This is used when displaying errors to the user.
 impl fmt::Display for Name<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        debug_assert!(!self.keys.is_empty(), "name contains no keys");
+
         if self.keys.is_empty() {
-            return write!(f, "Name()");
+            return write!(f, "<unknown>");
         }
 
-        write!(f, "Name({}", self.keys[0])?;
-
+        f.write_str(self.keys[0])?;
         for key in &self.keys[1..] {
             write!(f, ".{}", key)?;
         }
-
-        write!(f, ")")?;
 
         Ok(())
     }
@@ -377,13 +383,6 @@ impl Spanned for Name<'_> {
         let end = self.keys.iter().map(|s| s.len()).sum::<usize>() + dot;
 
         (self.start, end)
-    }
-}
-
-impl Name<'_> {
-    #[inline]
-    pub fn is_dot(&self) -> bool {
-        self.keys.len() == 1 && self.keys[0] == "."
     }
 }
 
