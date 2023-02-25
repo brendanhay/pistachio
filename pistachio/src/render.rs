@@ -37,6 +37,11 @@ pub trait Render {
     fn render_unescaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         self.render_escaped(context, writer)
     }
+
+    #[inline]
+    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        context.push(self).render_to_writer(writer)
+    }
 }
 
 // #[derive(Debug)]
