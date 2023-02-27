@@ -25,8 +25,6 @@ impl Name<'_> {
 // when parsing a closing tag style error.
 impl PartialEq<Name<'_>> for Name<'_> {
     fn eq(&self, other: &Name<'_>) -> bool {
-        println!("{:?} == {:?}", &self, &other);
-
         // Normalize
         self.keys.join(".").eq(&other.keys.join("."))
     }

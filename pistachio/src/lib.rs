@@ -20,15 +20,17 @@ use std::{
     },
 };
 
-use self::map::Map;
 pub use self::{
     error::Error,
+    template::Template,
+};
+use self::{
+    map::Map,
     render::{
         Context,
         Render,
         Writer,
     },
-    template::Template,
 };
 
 mod error;
@@ -37,8 +39,6 @@ mod map;
 mod parser;
 mod template;
 
-// Exposed for pistachio-macros to use.
-#[doc(hidden)]
 pub mod render;
 
 pub(crate) type Templates = Map<Cow<'static, str>, Template<'static>>;
@@ -110,7 +110,7 @@ pub struct Builder {
 impl Builder {
     pub fn build(self) -> Result<Pistachio, Error> {
         Ok(Pistachio {
-            directory: self.directory.canonicalize().map_err(Error::Io)?,
+            directory: self.directory.canonicalize().map_err(Error::io)?,
             extension: self.extension,
             templates: map::with_capacity(2),
             cache: self.cache,
@@ -179,7 +179,7 @@ impl Pistachio {
     {
         if !self.cache || !self.templates.contains_key(&name) {
             // Don't honor self.raise when trying to load a specifically requested template.
-            self.read_template_file(name.to_owned().into(), true)?;
+            self.load_template(name.to_owned().into(), true)?;
         }
 
         Ok(TemplateGuard {
@@ -210,54 +210,39 @@ impl Pistachio {
         let (template, partials) = Template::load(source.into())?;
         self.templates.insert(name, template);
         for partial in partials {
-            self.read_template_file(partial.into(), self.raise)?;
+            if !self.templates.contains_key(partial) {
+                self.load_template(partial.into(), self.raise)?;
+            }
         }
 
         Ok(())
     }
 
     #[inline]
-    fn read_template_file(&mut self, name: Cow<'static, str>, raise: bool) -> Result<(), Error> {
-        // Insert the template we're about to parse so we can handle self-references/recursion
-        // and also return an empty template if NotFound errors are suppressed.
-        let exists = self.templates.contains_key(&name);
-        if !exists {
-            self.templates.insert(name.to_owned(), Template::empty());
+    fn load_template(&mut self, name: Cow<'static, str>, raise: bool) -> Result<(), Error> {
+        match self.read_file(name.as_ref()) {
+            Ok(source) => self.insert_template(name, source.into()),
+            Err(Error::NotFound) if !raise => {
+                self.templates.insert(name, Template::empty());
+                Ok(())
+            },
+            Err(error) => Err(error),
         }
+    }
 
+    #[inline]
+    fn read_file(&mut self, name: &str) -> Result<String, Error> {
         let path = self
             .directory
-            .join(name.as_ref())
+            .join(name)
             .with_extension(&self.extension)
             .canonicalize()
-            .map_err(Error::Io)?;
+            .map_err(Error::io)?;
 
         if !path.starts_with(&self.directory) {
             return Err(Error::InvalidPartial(path.display().to_string()));
         }
 
-        match fs::read_to_string(&path) {
-            Ok(source) => self.insert_template(name, source.into()),
-
-            Err(err) if matches!(err.kind(), io::ErrorKind::NotFound) => {
-                if !raise {
-                    return Ok(());
-                }
-
-                if !exists {
-                    self.templates.remove(&name);
-                }
-
-                Err(Error::NotFound)
-            },
-
-            Err(err) => {
-                if !exists {
-                    self.templates.remove(&name);
-                }
-
-                Err(Error::Io(err))
-            },
-        }
+        fs::read_to_string(&path).map_err(Error::io)
     }
 }

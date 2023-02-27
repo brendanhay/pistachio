@@ -160,12 +160,6 @@ Name: Name<'a> = {
     },
 }
 
-// Path: Name<'a> = {
-//     <start:@L> <path:"STRING"> => {
-//         Name { start, keys: vec![path.trim()] }
-//     },
-// }
-
 Key: Name<'a> = {
     <start:@L> <key:"IDENT"> => {
         Name { start, keys: vec![key] }

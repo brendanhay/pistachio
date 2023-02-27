@@ -199,7 +199,7 @@ impl<'a> Lexer<'a> {
             Mode::Literal => {
                 scan! {
                     self.token("}}", |d| Leave(d, layout))
-                    self.until("}}", String)
+                    self.until("}}", |s| String(s.trim_end()))
                 }
             },
         }?;
@@ -393,9 +393,10 @@ fn print_tokens() {
     // let source = "{{#list}}({{#.}}{{.}}{{/.}}){{/list}}";
     // let source = " | {{#boolean}} {{! Important Whitespace }}\n {{/boolean}} | \n";
     // let source = " | {{#boolean}} {{! Important Whitespace }}\n {{/boolean}} | \n";
-    let source = "|\r\n{{#boolean}}\r\n{{/boolean}}\r\n|";
-    let source = r#""{{person.name}}" == "{{#person}}{{name}}{{/person}}""#;
-    let source = "{{#a.b.c}}Here{{/a.b.c}}";
+    // let source = "|\r\n{{#boolean}}\r\n{{/boolean}}\r\n|";
+    // let source = r#""{{person.name}}" == "{{#person}}{{name}}{{/person}}""#;
+    // let source = "{{#a.b.c}}Here{{/a.b.c}}";
+    let source = "#{{# boolean }}\n/\n  {{/ boolean }}";
     let lexer = Lexer::new(source);
     let tokens = lexer.collect::<Vec<_>>();
 

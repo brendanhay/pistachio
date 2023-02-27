@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-pistachio = { path = "../pistachio" }
-serde = { version = "1", default-features = false, features = ["std", "derive"] }
+pistachio = { path = "../pistachio", features = ["json"] }
 serde_json = { version = "1", default-features = false, features = ["std"] }
+serde = { version = "1", default-features = false, features = ["std", "derive"] }
 tempfile = { version = "3.3.0", default-features = false }

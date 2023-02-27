@@ -93,8 +93,6 @@ impl Test {
             },
         };
 
-        println!("{:#?}", &template);
-
         let expect = self.expected;
         let actual = template.render(&self.data).map_err(|err| err.to_string());
 

@@ -105,6 +105,14 @@ impl From<ParseError<Token<'_>>> for Error {
 }
 
 impl Error {
+    pub(crate) fn io(error: io::Error) -> Self {
+        if error.kind() == io::ErrorKind::NotFound {
+            Error::NotFound
+        } else {
+            Error::Io(error)
+        }
+    }
+
     pub fn span(&self) -> Option<(usize, usize)> {
         match self {
             Error::ParsingFailed(span, _) => Some(*span),
@@ -146,8 +154,6 @@ impl Error {
         let width = (start.max(end) - start).min(1);
         let span = "^".repeat(width);
         let mark = format!("{:indent$}{}", "", span, indent = indent);
-
-        println!("mark: {}", mark.len());
 
         let mut lines = source.lines().collect::<Vec<_>>();
         lines.insert(line + 1, &mark);
