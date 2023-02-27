@@ -7,6 +7,8 @@ use ahash::AHasher;
 
 pub type Map<K, V> = collections::HashMap<K, V, BuildHasherDefault<AHasher>>;
 
+pub type Set<V> = collections::HashSet<V, BuildHasherDefault<AHasher>>;
+
 // pub type Map<K, V> = collections::HashMap<K, V>;
 
 #[inline]

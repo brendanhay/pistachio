@@ -1,53 +1,56 @@
 use std::ops::Range;
 
 use super::{
+    Render,
     Stack,
-    Var,
     WriteEscaped,
     Writer,
 };
 use crate::{
     parser::Spanned,
     template::{
-        Node,
         Tag,
+        TagKind,
         Template,
     },
     Error,
+    Templates,
 };
 
-/// The mustache context containing the execution stack and current sub-tree of nodes.
+/// The mustache context containing the execution stack and current sub-tree of tags.
 #[derive(Clone, Copy)]
 pub struct Context<'a> {
     stack: Stack<'a>,
-    nodes: &'a [Node<'a>],
+    partials: &'a Templates,
+    tags: &'a [Tag<'a>],
     raise: bool,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(raise: bool, nodes: &'a [Node<'a>]) -> Self {
+    pub(crate) fn new(raise: bool, partials: &'a Templates, tags: &'a [Tag<'a>]) -> Self {
         Self {
             stack: Stack::new(),
-            nodes,
+            partials,
+            tags,
             raise,
         }
     }
 
     pub fn fork(self, template: &'a Template) -> Self {
         Self {
-            nodes: template.nodes(),
+            tags: template.tags(),
             ..self
         }
     }
 
     pub fn slice(self, range: Range<usize>) -> Self {
         Self {
-            nodes: &self.nodes[range],
+            tags: &self.tags[range],
             ..self
         }
     }
 
-    pub fn push(self, frame: Var<'a>) -> Self {
+    pub fn push(self, frame: &'a (dyn Render + 'a)) -> Self {
         Self {
             stack: self.stack.push(frame),
             ..self
@@ -69,18 +72,18 @@ impl<'a> Context<'a> {
     pub fn render_to_writer(self, writer: &mut Writer) -> Result<(), Error> {
         let mut index = 0;
 
-        while let Some(node) = self.nodes.get(index) {
+        while let Some(tag) = self.tags.get(index) {
             index += 1;
 
-            writer.write_unescaped(node.text)?;
+            writer.write_unescaped(tag.text)?;
 
-            match node.tag {
-                Tag::Escaped => {
-                    match self.stack.resolve(&node.name) {
+            match tag.kind {
+                TagKind::Escaped => {
+                    match self.stack.resolve(&tag.name) {
                         None if self.raise => {
                             return Err(Error::MissingVariable(
-                                node.name.span(),
-                                node.name.to_string(),
+                                tag.name.span(),
+                                tag.name.to_string(),
                             ))
                         },
                         None => {},
@@ -97,12 +100,12 @@ impl<'a> Context<'a> {
                     }
                 },
 
-                Tag::Unescaped => {
-                    match self.stack.resolve(&node.name) {
+                TagKind::Unescaped => {
+                    match self.stack.resolve(&tag.name) {
                         None if self.raise => {
                             return Err(Error::MissingVariable(
-                                node.name.span(),
-                                node.name.to_string(),
+                                tag.name.span(),
+                                tag.name.to_string(),
                             ))
                         },
                         None => {},
@@ -119,10 +122,10 @@ impl<'a> Context<'a> {
                     }
                 },
 
-                Tag::Section => {
-                    let children = node.children() as usize;
+                TagKind::Section => {
+                    let children = tag.children() as usize;
 
-                    match self.stack.resolve(&node.name) {
+                    match self.stack.resolve(&tag.name) {
                         None => {},
                         Some(var) if !var.is_truthy() => {},
                         Some(var) => {
@@ -155,10 +158,10 @@ impl<'a> Context<'a> {
                     index += children;
                 },
 
-                Tag::Inverted => {
-                    let children = node.children() as usize;
+                TagKind::Inverted => {
+                    let children = tag.children() as usize;
 
-                    match self.stack.resolve(&node.name) {
+                    match self.stack.resolve(&tag.name) {
                         Some(var) if var.is_truthy() => {},
                         _ => self
                             .slice(index..index + children)
@@ -171,11 +174,23 @@ impl<'a> Context<'a> {
                 // Tag::Block => {},
 
                 // Tag::Parent => {},
+                TagKind::Partial => match tag.name.path() {
+                    None => unreachable!(),
+                    Some(path) => {
+                        // Shouldn't need to raise errors here since the Loader trait
+                        // ensures missing partial errors were already raised.
+                        match self.partials.get(path) {
+                            None => {},
+                            Some(template) => {
+                                self.fork(template).render_to_writer(writer)?;
+                            },
+                        }
+                    },
+                },
 
-                // Tag::Partial => {},
-                Tag::Closing => {},
+                TagKind::Closing => {},
 
-                Tag::Content => {},
+                TagKind::Content => {},
 
                 _ => {
                     todo!()

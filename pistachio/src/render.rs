@@ -22,14 +22,12 @@ pub use self::{
         Writer,
     },
 };
-use crate::{
-    Error,
-    Template,
-    Var,
-};
+use crate::Error;
+
+#[cfg(feature = "json")]
+mod json;
 
 mod context;
-mod json;
 mod stack;
 mod writer;
 
@@ -56,12 +54,12 @@ pub trait Render {
     }
 
     #[inline]
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+    fn render_section(&self, _context: Context, _writer: &mut Writer) -> Result<(), Error> {
         Ok(())
     }
 
     #[inline]
-    fn resolve(&self, key: &str) -> Option<&dyn Render> {
+    fn resolve(&self, _key: &str) -> Option<&dyn Render> {
         None
     }
 }

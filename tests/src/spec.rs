@@ -66,12 +66,12 @@ impl Test {
 
         let mut pistachio = Pistachio::builder()
             .directory(&tmp_dir)
-            .reloading()
+            .disable_caching()
             .missing_is_false()
             .build()
             .expect("failed to create pistachio");
         let template = self.template.clone();
-        let template = match pistachio.add(self.name.clone(), template) {
+        let template = match pistachio.insert(&self.name, template) {
             Ok(template) => template,
             Err(err) => {
                 let span = err
@@ -141,10 +141,10 @@ fn test_spec_comments() {
     Spec::run("spec/specs/comments.json")
 }
 
-// #[test]
-// fn test_spec_partials() {
-//     Spec::run("spec/specs/partials.json")
-// }
+#[test]
+fn test_spec_partials() {
+    Spec::run("spec/specs/partials.json")
+}
 
 // #[test]
 // fn test_spec_dynamic_names() {

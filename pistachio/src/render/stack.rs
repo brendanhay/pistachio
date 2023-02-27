@@ -1,7 +1,9 @@
 use crate::{
     template::Name,
-    Var,
+    Render,
 };
+
+pub type Var<'a> = &'a (dyn Render + 'a);
 
 #[derive(Clone, Copy)]
 pub struct Stack<'a> {

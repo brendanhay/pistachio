@@ -7,12 +7,12 @@ use std::{
     io,
 };
 
-use serde::ser;
-
 use crate::parser::{
     ParseError,
     Token,
 };
+
+// XXX: extension trait for Result<Error> to simplify NotFound error handling
 
 #[derive(Debug)]
 pub enum Error {
@@ -21,6 +21,9 @@ pub enum Error {
 
     /// Loading templates at runtime is disabled.
     LoadingDisabled,
+
+    // XXX: convert io::Error into this.
+    NotFound,
 
     /// An attempt to include a partial or parent failed.
     InvalidPartial(String),
@@ -33,12 +36,11 @@ pub enum Error {
 
     /// serde::ser::Error::custom(...)
     Message(String),
+    // /// NaN etc.
+    // NonFiniteFloat,
 
-    /// NaN etc.
-    NonFiniteFloat,
-
-    /// Non-string key like a struct/tuple/float.
-    KeyMustBeString,
+    // /// Non-string key like a struct/tuple/float.
+    // KeyMustBeString,
 }
 
 impl StdError for Error {
@@ -50,12 +52,6 @@ impl StdError for Error {
     }
 }
 
-impl ser::Error for Error {
-    fn custom<T: fmt::Display>(msg: T) -> Error {
-        Error::Message(msg.to_string())
-    }
-}
-
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -63,6 +59,7 @@ impl fmt::Display for Error {
             Error::LoadingDisabled => {
                 f.write_str("loading templates from the filesystem is disabled")
             },
+            Error::NotFound => f.write_str("not found"),
             Error::InvalidPartial(msg) => write!(f, "partial path {} is invalid", msg),
             Error::ParsingFailed(_span, msg) => f.write_str(msg),
             Error::MissingVariable(span, ident) => write!(
@@ -71,8 +68,8 @@ impl fmt::Display for Error {
                 ident, span
             ),
             Error::Message(msg) => f.write_str(msg),
-            Error::NonFiniteFloat => f.write_str("non-finite float"),
-            Error::KeyMustBeString => f.write_str("key must be a string"),
+            // Error::NonFiniteFloat => f.write_str("non-finite float"),
+            // Error::KeyMustBeString => f.write_str("key must be a string"),
         }
     }
 }

@@ -9,12 +9,12 @@
 use crate::{
     lexer::{Token, Layout},
     parser::{Spanned, balanced},
-    template::{Name, Node},
+    template::{Name, Tag},
+    map::Set,
     Error,
-    Loader,
 };
 
-grammar<'a>(size_hint: &mut usize, loader: &mut dyn Loader<'a>, source: &'a str);
+grammar<'a>(size_hint: &mut usize, partials: &mut Set<&'a str>, source: &'a str);
 
 // Tokens
 
@@ -45,108 +45,107 @@ extern {
 
 // Productions
 
-pub Mustache: Vec<Node<'a>> = {
-    Nodes => <>
+pub Mustache: Vec<Tag<'a>> = {
+    Tags => <>
 }
 
 #[inline]
-Nodes: Vec<Node<'a>> = {
-    Node+ => <>.into_iter().flatten().collect(),
+Tags: Vec<Tag<'a>> = {
+    Tag+ => <>.into_iter().flatten().collect(),
 }
 
-Node: Vec<Node<'a>> = {
+Tag: Vec<Tag<'a>> = {
     Section  => <>,
     Inverted => <>,
     // Parent   => <>,
     // Block    => <>,
-    // Partial  => <>,
+    Partial  => vec![<>],
     Variable => vec![<>],
     Comment  => vec![<>],
     Eof      => vec![<>],
 }
 
-Section: Vec<Node<'a>> = {
-    <text:"{{"> "#" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+Section: Vec<Tag<'a>> = {
+    <text:"{{"> "#" <name:Name> <layout:"}}"> <tags:Tags?> <close:Closing> =>? {
         balanced!("#", &name, &close.name, name.span(), {
-            Ok(Node::section(layout.trim(text), name, nodes, close))
+            Ok(Tag::section(layout.trim(text), name, tags, close))
         })
     },
 }
 
-Inverted: Vec<Node<'a>> = {
-    <text:"{{"> "^" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+Inverted: Vec<Tag<'a>> = {
+    <text:"{{"> "^" <name:Name> <layout:"}}"> <tags:Tags?> <close:Closing> =>? {
         balanced!("^", &name, &close.name, name.span(), {
-            Ok(Node::inverted(layout.trim(text), name, nodes, close))
+            Ok(Tag::inverted(layout.trim(text), name, tags, close))
         })
     },
 }
 
-// Block: Vec<Node<'a>> = {
-//     <text:"{{"> "$" <name:Key> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+// Block: Vec<Tag<'a>> = {
+//     <text:"{{"> "$" <name:Key> <layout:"}}"> <tags:Tags?> <close:Closing> =>? {
 //         balanced!("$", &name, &close.key, key.span(), {
-//             Ok(Node::block(layout.trim(text), key, nodes, close))
+//             Ok(Tag::block(layout.trim(text), key, tags, close))
 //         })
 //     },
 // }
 
-// Parent: Vec<Node<'a>> = {
-//     <text:"{{"> "<" "*" <name:Name> <layout:"}}"> <nodes:Nodes?> <close:Closing> =>? {
+// Parent: Vec<Tag<'a>> = {
+//     <text:"{{"> "<" "*" <name:Name> <layout:"}}"> <tags:Tags?> <close:Closing> =>? {
 //         balanced!("<", &name, &close.key, name.span(), {
-//             Ok(Node::dynamic_parent(layout.trim(text), name, nodes, close))
+//             Ok(Tag::dynamic_parent(layout.trim(text), name, tags, close))
 //         })
 //     },
 
-//     <text:"{{"> "<" <start:@L> <path:Path> <layout:"}}"> <nodes:Nodes?> <close:ClosePath> =>? {
+//     <text:"{{"> "<" <start:@L> <path:Path> <layout:"}}"> <tags:Tags?> <close:ClosePath> =>? {
 //         balanced!("<", &name, &close.key, (start, name).span(), {
 //             let template = loader.get_template(name)?;
 //             *size_hint += template.size_hint();
-//             Ok(template.inherit_parent(layout.rim(text), nodes, close))
+//             Ok(template.inherit_parent(layout.rim(text), tags, close))
 //         })
 //     },
 // }
 
-// Partial: Vec<Node<'a>> = {
-//     <text:"{{"> ">" "*" <name:Name> <layout:"}}"> => {
-//         Node::dynamic_partial(layout.trim(text), name)
-//     },
+Partial: Tag<'a> = {
+    // <text:"{{"> ">" "*" <name:Name> <layout:"}}"> => {
+    //     Tag::dynamic_partial(layout.trim(text), name)
+    // },
 
-//     <text:"{{"> ">" <path:Path> <layout:"}}"> =>? {
-//         let template = loader.get_template(name)?;
-//         *size_hint += template.size_hint();
-//         Ok(template.include_partial(layout.trim(text)))
-//     },
-// }
+    <text:"{{"> ">" <start:@L> <path:"STRING"> <layout:"}}"> =>? {
+        partials.insert(path);
+        Ok(Tag::partial(layout.trim(text), Name { start, keys: vec![path] }))
+    },
+}
 
-// Closing: Node<'a> = {
+// Closing: Tag<'a> = {
 //     <text:"{{"> "/" <name:Name> <layout:"}}"> => {
-//         Node::closing(layout.trim(text), name)
+//         Tag::closing(layout.trim(text), name)
 //     },
 // }
 
-Closing: Node<'a> = {
-    <text:"{{"> "/" <path:Path> <layout:"}}"> => {
-        Node::closing(layout.trim(text), path)
+Closing: Tag<'a> = {
+    <text:"{{"> "/" <start:@L> <path:"STRING"> <layout:"}}"> => {
+        Tag::closing(layout.trim(text), Name { start, keys: vec![path] })
     },
 }
 
-Variable: Node<'a> = {
-    <text:"{{"> "{" <name:Name> "}}" => Node::unescaped(text, name),
-    <text:"{{"> "&" <name:Name> "}}" => Node::unescaped(text, name),
-    <text:"{{">     <name:Name> "}}" => Node::escaped(text, name),
+Variable: Tag<'a> = {
+    <text:"{{"> "{" <name:Name> "}}" => Tag::unescaped(text, name),
+    <text:"{{"> "&" <name:Name> "}}" => Tag::unescaped(text, name),
+    <text:"{{">     <name:Name> "}}" => Tag::escaped(text, name),
 }
 
-Comment: Node<'a> = {
+Comment: Tag<'a> = {
     <text:"{{"> "!" String <layout:"}}"> => {
-        Node::content(layout.trim(text))
+        Tag::content(layout.trim(text))
     },
 }
 
-Eof: Node<'a> = {
+Eof: Tag<'a> = {
     <"EOF"> => {
         let (text, layout) = <>;
         let text = layout.trim(text);
         *size_hint += text.len();
-        Node::content(text)
+        Tag::content(text)
     },
 }
 
@@ -161,11 +160,11 @@ Name: Name<'a> = {
     },
 }
 
-Path: Name<'a> = {
-    <start:@L> <path:"STRING"> => {
-        Name { start, keys: vec![path.trim()] }
-    },
-}
+// Path: Name<'a> = {
+//     <start:@L> <path:"STRING"> => {
+//         Name { start, keys: vec![path.trim()] }
+//     },
+// }
 
 Key: Name<'a> = {
     <start:@L> <key:"IDENT"> => {

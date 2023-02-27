@@ -1,6 +1,8 @@
 [workspace]
-members = ["pistachio", "pistachio-cli", "tests"]
-default-package  = ["pistachio"]
+members = ["pistachio", "pistachio-derive", "pistachio-cli", "tests"]
+
+[patch.crates-io]
+pistachio-derive = { path = "./pistachio-derive" }
 
 [profile.bench]
 lto = "fat"

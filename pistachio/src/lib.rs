@@ -2,31 +2,33 @@
 #![warn(clippy::disallowed_types)]
 
 use std::{
-    borrow::Cow,
-    collections::hash_map::Entry,
+    borrow::{
+        Borrow,
+        Cow,
+    },
     ffi::{
         OsStr,
         OsString,
     },
+    fmt,
     fs,
+    hash::Hash,
+    io,
     path::{
         Path,
         PathBuf,
     },
 };
 
+use self::map::Map;
 pub use self::{
     error::Error,
-    map::Map,
-    parser::ParseError,
     render::{
         Context,
         Render,
-        WriteEscaped,
         Writer,
     },
     template::Template,
-    variable::Var,
 };
 
 mod error;
@@ -38,25 +40,70 @@ mod template;
 // Exposed for pistachio-macros to use.
 #[doc(hidden)]
 pub mod render;
-mod variable;
 
-/// The caching strategy determining how templates are loaded.
-#[derive(Debug, Clone, Copy)]
-pub enum Cache {
-    /// Cache non-dynamic templates by name, in memory.
-    Name,
+pub(crate) type Templates = Map<Cow<'static, str>, Template<'static>>;
 
-    // ModifiedTime,
-    /// Don't cache templates. Every request for a non-dynamic template
-    /// name will cause it to be read from the file system.
-    None,
+/// A mustache template obtained from a `Pistachio` that potentially references other templates.
+pub struct TemplateGuard<'a> {
+    pistachio: &'a Pistachio,
+    template: &'a Template<'static>,
+}
+
+impl fmt::Debug for TemplateGuard<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.template.fmt(f)
+    }
+}
+
+impl<'a> TemplateGuard<'a> {
+    pub fn size_hint(&self) -> usize {
+        self.template.size_hint()
+    }
+
+    pub fn source(&self) -> &str {
+        &self.template.source()
+    }
+
+    pub fn render<T>(&self, value: T) -> Result<String, Error>
+    where
+        T: Render,
+    {
+        let mut capacity = self.template.size_hint() + value.size_hint();
+
+        // Add 25% for escaping and various expansions.
+        capacity += capacity / 4;
+
+        Context::new(
+            self.pistachio.raise,
+            &self.pistachio.templates,
+            &self.template.tags(),
+        )
+        .push(&value)
+        .render(capacity)
+    }
+
+    pub fn render_to_writer<T, W>(&self, value: T, writer: &mut W) -> Result<(), Error>
+    where
+        T: Render,
+        W: io::Write,
+    {
+        let mut writer = Writer::new(writer);
+
+        Context::new(
+            self.pistachio.raise,
+            &self.pistachio.templates,
+            &self.template.tags(),
+        )
+        .push(&value)
+        .render_to_writer(&mut writer)
+    }
 }
 
 #[derive(Debug)]
 pub struct Builder {
     directory: PathBuf,
     extension: OsString,
-    cache: Cache,
+    cache: bool,
     raise: bool,
 }
 
@@ -65,7 +112,7 @@ impl Builder {
         Ok(Pistachio {
             directory: self.directory.canonicalize().map_err(Error::Io)?,
             extension: self.extension,
-            templates: map::with_capacity(4),
+            templates: map::with_capacity(2),
             cache: self.cache,
             raise: self.raise,
         })
@@ -81,8 +128,8 @@ impl Builder {
         self
     }
 
-    pub fn reloading(mut self) -> Self {
-        self.cache = Cache::None;
+    pub fn disable_caching(mut self) -> Self {
+        self.cache = false;
         self
     }
 
@@ -97,12 +144,17 @@ impl Builder {
 pub struct Pistachio {
     directory: PathBuf,
     extension: OsString,
-    templates: map::Map<Cow<'static, str>, Template<'static>>,
-    cache: Cache,
+    templates: Templates,
+    cache: bool,
     raise: bool,
 }
 
 impl Pistachio {
+    /// New context.
+    pub fn new<P: AsRef<Path>>(directory: P) -> Result<Self, Error> {
+        Self::builder().directory(directory).build()
+    }
+
     /// Create a new `Pistachio` with a `.mustache` file extension and the specified
     /// root directory as the search mechanism for loading templates. Templates will
     /// be parsed once and then cached in memory. If you want to reload templates
@@ -112,47 +164,67 @@ impl Pistachio {
     /// behaviour, see [`Builder::missing_is_false`].
     pub fn builder() -> Builder {
         Builder {
-            directory: "examples".into(),
+            directory: ".".into(),
             extension: "mustache".into(),
-            cache: Cache::Name,
+            cache: true,
             raise: true,
         }
     }
 
-    /// Get an existing template from this `Pistachio`, reading it from the filesystem
-    /// and parsing it, if not already present in memory.
-    pub fn get(&mut self, name: &str) -> Result<&Template<'static>, Error> {
-        match self.cache {
-            Cache::Name if self.templates.contains_key(name) => {},
-            Cache::Name => {
-                self.read_template(Cow::Owned(name.to_string()))?;
-            },
-            Cache::None => {
-                self.read_template(Cow::Owned(name.to_string()))?;
-            },
+    /// Get a template either from memory or by reading from the filesystem (if enabled).
+    pub fn get<N>(&mut self, name: N) -> Result<TemplateGuard, Error>
+    where
+        for<'a> Cow<'a, str>: Borrow<N>,
+        N: Eq + Hash + Clone + Into<Cow<'static, str>>,
+    {
+        if !self.cache || !self.templates.contains_key(&name) {
+            // Don't honor self.raise when trying to load a specifically requested template.
+            self.read_template_file(name.to_owned().into(), true)?;
         }
 
-        Ok(&self.templates[name])
+        Ok(TemplateGuard {
+            pistachio: &*self,
+            template: &self.templates[&name],
+        })
     }
 
-    /// Add a template to this `Pistachio`.
-    pub fn add<Name, Source>(
-        &mut self,
-        name: Name,
-        source: Source,
-    ) -> Result<&Template<'static>, Error>
+    /// Add a template, potentially replacing an existing template with the same name.
+    pub fn insert<S>(&mut self, name: &str, source: S) -> Result<TemplateGuard, Error>
     where
-        Name: Into<Cow<'static, str>>,
-        Source: Into<Cow<'static, str>>,
+        S: Into<Cow<'static, str>>,
     {
-        let name = name.into();
-        let template = Template::with_loader(source.into(), self)?;
+        self.insert_template(name.to_owned().into(), source.into())?;
 
-        Ok(self.insert_template(name, template))
+        Ok(TemplateGuard {
+            pistachio: &*self,
+            template: &self.templates[name],
+        })
     }
 
     #[inline]
-    fn read_template(&mut self, name: Cow<'static, str>) -> Result<&Template<'static>, Error> {
+    fn insert_template(
+        &mut self,
+        name: Cow<'static, str>,
+        source: Cow<'static, str>,
+    ) -> Result<(), Error> {
+        let (template, partials) = Template::load(source.into())?;
+        self.templates.insert(name, template);
+        for partial in partials {
+            self.read_template_file(partial.into(), self.raise)?;
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    fn read_template_file(&mut self, name: Cow<'static, str>, raise: bool) -> Result<(), Error> {
+        // Insert the template we're about to parse so we can handle self-references/recursion
+        // and also return an empty template if NotFound errors are suppressed.
+        let exists = self.templates.contains_key(&name);
+        if !exists {
+            self.templates.insert(name.to_owned(), Template::empty());
+        }
+
         let path = self
             .directory
             .join(name.as_ref())
@@ -164,58 +236,28 @@ impl Pistachio {
             return Err(Error::InvalidPartial(path.display().to_string()));
         }
 
-        let source = fs::read_to_string(&path).map_err(Error::Io)?;
-        let template = Template::with_loader(source.into(), self)?;
+        match fs::read_to_string(&path) {
+            Ok(source) => self.insert_template(name, source.into()),
 
-        Ok(self.insert_template(name, template))
-    }
+            Err(err) if matches!(err.kind(), io::ErrorKind::NotFound) => {
+                if !raise {
+                    return Ok(());
+                }
 
-    #[inline]
-    fn insert_template(
-        &mut self,
-        name: Cow<'static, str>,
-        template: Template<'static>,
-    ) -> &Template<'static> {
-        // https://doc.rust-lang.org/std/collections/hash_map/enum.Entry.html#method.insert_entry
-        match self.templates.entry(name) {
-            Entry::Occupied(mut entry) => {
-                entry.insert(template);
-                &*entry.into_mut()
+                if !exists {
+                    self.templates.remove(&name);
+                }
+
+                Err(Error::NotFound)
             },
-            Entry::Vacant(entry) => &*entry.insert(template),
+
+            Err(err) => {
+                if !exists {
+                    self.templates.remove(&name);
+                }
+
+                Err(Error::Io(err))
+            },
         }
-    }
-}
-
-pub trait Loader<'a> {
-    /// Invoked as a callback by the LR parser to obtain a child template when
-    /// `{{<parent}}` or `{{>partial}}` are encountered.
-    fn get_template(&mut self, name: &'a str) -> Result<&Template<'a>, Error>;
-
-    /// If missing `{{foo}}` variables should raise an error.
-    fn raise_if_missing(&self) -> bool {
-        false
-    }
-}
-
-pub struct LoadingDisabled;
-
-impl<'a> Loader<'a> for LoadingDisabled {
-    fn get_template(&mut self, _name: &'a str) -> Result<&Template<'a>, Error> {
-        Err(Error::LoadingDisabled)
-    }
-}
-
-impl Loader<'static> for Pistachio {
-    fn get_template(&mut self, name: &'static str) -> Result<&Template<'static>, Error> {
-        if !self.templates.contains_key(name) {
-            self.read_template(name.into())?;
-        }
-
-        Ok(&self.templates[name])
-    }
-
-    fn raise_if_missing(&self) -> bool {
-        self.raise
     }
 }
