@@ -16,12 +16,12 @@ use serde::Deserialize;
 use serde_json::Value;
 use tempfile::TempDir;
 
-#[derive(Render)]
-struct Tmpl {
-    foo: String,
-    bar: i64,
-    baz: Box<dyn Fn() -> String>,
-}
+// #[derive(Render)]
+// struct Tmpl {
+//     foo: String,
+//     bar: i64,
+//     baz: Box<dyn Fn() -> String>,
+// }
 
 #[derive(Debug, Deserialize)]
 struct Spec {
@@ -36,7 +36,7 @@ impl Spec {
         let spec: Self = serde_json::from_reader(file).expect(&format!("invalid spec in {}", name));
 
         // XXX:
-        let ignored = (&["Recursion", "Deeply Nested Contexts"])
+        let ignored = (&["Recursion"])
             .into_iter()
             .map(|s| s.to_string())
             .collect::<HashSet<String>>();
@@ -77,7 +77,6 @@ impl Test {
 
         let mut pistachio = Pistachio::builder()
             .directory(&tmp_dir)
-            .disable_caching()
             .missing_is_false()
             .build()
             .expect("failed to create pistachio");
@@ -93,8 +92,8 @@ impl Test {
                 println!("// Begin");
                 println!("        <name> {}", &self.name);
                 println!(" <description> {}", self.desc);
-                println!("        <data> {}", self.data);
                 println!("    <template> {}", self.template);
+                println!("        <data> {}", self.data);
                 println!("    <partials> {:?}", self.partials);
                 println!("       <error> {}", &err);
                 println!(" {}", &span);
@@ -119,8 +118,8 @@ impl Test {
             println!("// Begin");
             println!("        <name> {}", &self.name);
             println!(" <description> {}", self.desc);
+            println!("    <template> {:?}", self.template);
             println!("        <data> {}", data);
-            println!("    <template> {:#?}", template);
             println!("    <partials> {:?}", self.partials);
             println!("    <expected> {:?}", &expect);
             println!("      <actual> {:?}", &actual);

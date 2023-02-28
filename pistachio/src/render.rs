@@ -58,10 +58,10 @@ pub trait Render {
     fn render_section(
         &self,
         _capture: &str,
-        _context: Context,
-        _writer: &mut Writer,
+        context: Context,
+        writer: &mut Writer,
     ) -> Result<(), Error> {
-        Ok(())
+        context.push(&self).render_to_writer(writer)
     }
 
     #[inline]
@@ -124,16 +124,6 @@ impl Render for String {
     fn render_unescaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
         writer.write_unescaped(self)
     }
-
-    #[inline]
-    fn render_section(
-        &self,
-        _capture: &str,
-        context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Error> {
-        context.push(self).render_to_writer(writer)
-    }
 }
 
 impl<T: Render> Render for Vec<T> {
@@ -166,16 +156,6 @@ where
     #[inline]
     fn is_truthy(&self) -> bool {
         !self.is_empty()
-    }
-
-    #[inline]
-    fn render_section(
-        &self,
-        _capture: &str,
-        context: Context,
-        writer: &mut Writer,
-    ) -> Result<(), Error> {
-        context.push(self).render_to_writer(writer)
     }
 
     #[inline]
@@ -298,6 +278,6 @@ impl_pointers! {
     &T,
     Box<T>,
     Rc<T>,
-    Arc<T>,
-    Cow<'_, T>: ToOwned
+    Arc<T>
+    // Cow<'_, T>: ToOwned
 }

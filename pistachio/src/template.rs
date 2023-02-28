@@ -149,34 +149,36 @@ impl<'a> Template<'a> {
 
         buffer.push(Tag::content(text));
 
-        let mut skip = 0;
+        let mut index = 0;
 
-        for (index, tag) in self.tags.iter().enumerate() {
+        while let Some(tag) = self.tags.get(index) {
             match tag.kind {
                 // For each block in the parent replace with any matching block override
                 // found in `tags`. Any blocks that aren't overriden are preserved.
                 TagKind::Block => {
-                    if let Some((index, block)) = blocks.remove(&tag.name) {
-                        skip = index + tag.children as usize;
+                    if let Some((i, block)) = blocks.remove(&tag.name) {
+                        index += tag.children as usize + 1;
 
                         let mut tag = tag.clone();
                         tag.children = block.children;
 
                         // Preserve the included parent block tag's leading text.
-                        let slice = &child[(index + 1)..(block.children as usize) + 1];
+                        let slice = &child[(i + 1)..(block.children as usize) + 1];
 
                         buffer.push(tag);
                         buffer.extend_from_slice(slice);
                     } else {
                         buffer.push(tag.clone());
+
+                        index += 1;
                     }
                 },
 
                 // Any non-block tags are preserved.
                 _ => {
-                    if index != skip {
-                        buffer.push(tag.clone());
-                    }
+                    buffer.push(tag.clone());
+
+                    index += 1;
                 },
             }
         }

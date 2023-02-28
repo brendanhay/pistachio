@@ -103,7 +103,6 @@ pub(crate) type Templates = Map<Cow<'static, str>, Template<'static>>;
 pub struct Builder {
     directory: PathBuf,
     extension: OsString,
-    cache: bool,
     raise: bool,
 }
 
@@ -113,7 +112,6 @@ impl Builder {
             directory: self.directory.canonicalize().map_err(Error::io)?,
             extension: self.extension,
             templates: map::with_capacity(2),
-            cache: self.cache,
             raise: self.raise,
         })
     }
@@ -128,10 +126,10 @@ impl Builder {
         self
     }
 
-    pub fn disable_caching(mut self) -> Self {
-        self.cache = false;
-        self
-    }
+    // pub fn disable_caching(mut self) -> Self {
+    //     self.cache = false;
+    //     self
+    // }
 
     pub fn missing_is_false(mut self) -> Self {
         self.raise = false;
@@ -145,7 +143,6 @@ pub struct Pistachio {
     directory: PathBuf,
     extension: OsString,
     templates: Templates,
-    cache: bool,
     raise: bool,
 }
 
@@ -166,7 +163,6 @@ impl Pistachio {
         Builder {
             directory: ".".into(),
             extension: "mustache".into(),
-            cache: true,
             raise: true,
         }
     }
@@ -176,7 +172,7 @@ impl Pistachio {
         let name = name.into();
 
         // XXX: Don't honor self.raise when trying to load a specifically requested template.
-        if !self.cache || !self.templates.contains_key(&name) {
+        if !self.templates.contains_key(&name) {
             self.loader().get_partial(name.to_owned())?;
         }
 
@@ -196,8 +192,6 @@ impl Pistachio {
 
     #[inline]
     fn read_file(&mut self, name: &str) -> Result<String, Error> {
-        println!("read_file: {}", name);
-
         let path = self
             .directory
             .join(name)
@@ -244,10 +238,10 @@ struct NonRecursive<'a> {
 
 impl<'a> Loader<'static> for NonRecursive<'a> {
     fn get_partial(&mut self, name: Cow<'static, str>) -> Result<&Template<'static>, Error> {
-        if !self.inner.cache || !self.inner.templates.contains_key(&name) {
-            // if !self.chain.insert(name.to_string()) {
-            //     return Err(Error::RecursivePartial(name.to_string()));
-            // }
+        if !self.inner.templates.contains_key(&name) {
+            if !self.chain.insert(name.to_string()) {
+                return Err(Error::RecursivePartial(name.to_string()));
+            }
 
             match self.inner.read_file(name.as_ref()) {
                 Ok(source) => {
