@@ -71,8 +71,9 @@ Tag: Vec<Tag<'a>> = {
 }
 
 Section: Vec<Tag<'a>> = {
-    <text:"{{"> "#" <name:Name> <layout:"}}"> <start:@L> <tags:Tags?> <end:@R> <close:Closing> =>? {
-        let capture = &source[start..end + 1];
+    <text:"{{"> "#" <name:Name> <layout:"}}"> <start:@R> <tags:Tags?> <end:@R> <close:Closing> =>? {
+        /// XXX: this is pretty atrocious.
+        let capture = &source[start + 1 ..end + 1];
 
         balanced!("#", &name, &close.name, name.span(), {
             Ok(Tag::section(layout.trim(text), name, tags, capture, close))

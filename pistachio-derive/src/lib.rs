@@ -40,9 +40,12 @@ impl Ord for Field {
 #[derive(FromAttributes)]
 struct Pistachio {
     skip: Option<()>,
+    flatten: Option<()>,
     rename: Option<syn::LitStr>,
     callback: Option<syn::Path>,
 }
+
+/// XXX: support flatten
 
 #[proc_macro_derive(Render, attributes(pistachio))]
 pub fn derive_render(input: TokenStream) -> TokenStream {
@@ -60,6 +63,7 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
         _ => unit_fields.into_iter(),
     };
 
+    let mut flatten = Vec::new();
     let mut fields = fields
         .enumerate()
         .filter_map(|(index, field)| {
@@ -70,6 +74,19 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
             match Pistachio::try_from_attributes(&field.attrs) {
                 Ok(Some(pistachio)) => {
                     if pistachio.skip.is_some() {
+                        skip = true;
+                    }
+
+                    if pistachio.flatten.is_some() {
+                        flatten.push(field.ident.as_ref().map_or_else(
+                            || {
+                                let index = index.to_string();
+                                let lit = syn::LitInt::new(&index, Span::call_site());
+                                quote!(#lit)
+                            },
+                            |ident| quote!(#ident),
+                        ));
+
                         skip = true;
                     }
 
@@ -144,6 +161,7 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
         },
     );
 
+    let flatten = &*flatten;
     let fields = fields.iter().map(|Field { field, .. }| field);
 
     let where_clause = type_params
@@ -179,7 +197,8 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
             ) -> std::option::Option<&dyn ::pistachio::render::Render> {
                 match key {
                     #( #resolve )*
-                    _ => None
+                    _ =>
+                        None #( .or(self.#flatten.resolve(key)) )*
                 }
             }
         }

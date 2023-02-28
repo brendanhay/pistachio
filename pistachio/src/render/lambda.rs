@@ -4,19 +4,42 @@ use super::{
     Writer,
 };
 use crate::{
+    render::WriteEscaped,
     Error,
     Template,
 };
 
 /// Whether the source string is a mustache template and should be parsed
 /// and rendered against the current context.
-pub struct Expand(String);
+pub struct Expand(pub String);
+
+impl From<&str> for Expand {
+    fn from(value: &str) -> Self {
+        Expand(value.to_owned())
+    }
+}
+
+impl From<String> for Expand {
+    fn from(value: String) -> Self {
+        Expand(value)
+    }
+}
 
 impl Render for Expand {
     #[inline]
     fn render_escaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         let template = Template::new(&self.0)?;
-        context.fork(&template).render_to_writer(writer)
+        let buffer = context.fork(&template).render(8)?;
+
+        writer.write_escaped(&buffer)
+    }
+
+    #[inline]
+    fn render_unescaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        let template = Template::new(&self.0)?;
+        let buffer = context.fork(&template).render(8)?;
+
+        writer.write_unescaped(&buffer)
     }
 }
 
@@ -24,6 +47,11 @@ impl<T: Render> Render for dyn Fn() -> T {
     #[inline]
     fn render_escaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
         self().render_escaped(context, writer)
+    }
+
+    #[inline]
+    fn render_unescaped(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+        self().render_unescaped(context, writer)
     }
 }
 

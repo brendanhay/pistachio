@@ -29,7 +29,10 @@ use self::map::{
 };
 pub use self::{
     error::Error,
-    render::Render,
+    render::{
+        Expand,
+        Render,
+    },
     template::Template,
 };
 
@@ -40,62 +43,6 @@ mod parser;
 mod template;
 
 pub mod render;
-
-// /// A mustache template obtained from a `Pistachio` that potentially references other templates.
-// pub struct TemplateGuard<'a> {
-//     pistachio: &'a Pistachio,
-//     template: &'a Template<'static>,
-// }
-
-// impl fmt::Debug for TemplateGuard<'_> {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         self.template.fmt(f)
-//     }
-// }
-
-// impl<'a> TemplateGuard<'a> {
-//     pub fn size_hint(&self) -> usize {
-//         self.template.size_hint()
-//     }
-
-//     pub fn source(&self) -> &str {
-//         &self.template.source()
-//     }
-
-//     pub fn render<T>(&self, value: T) -> Result<String, Error>
-//     where
-//         T: Render,
-//     {
-//         let mut capacity = self.template.size_hint() + value.size_hint();
-
-//         // Add 25% for escaping and various expansions.
-//         capacity += capacity / 4;
-
-//         Context::new(
-//             self.pistachio.raise,
-//             &self.pistachio.templates,
-//             &self.template.tags(),
-//         )
-//         .push(&value)
-//         .render(capacity)
-//     }
-
-//     pub fn render_to_writer<T, W>(&self, value: T, writer: &mut W) -> Result<(), Error>
-//     where
-//         T: Render,
-//         W: io::Write,
-//     {
-//         let mut writer = Writer::new(writer);
-
-//         Context::new(
-//             self.pistachio.raise,
-//             &self.pistachio.templates,
-//             &self.template.tags(),
-//         )
-//         .push(&value)
-//         .render_to_writer(&mut writer)
-//     }
-// }
 
 #[derive(Debug)]
 pub struct Builder {

@@ -16,6 +16,7 @@ use std::{
 
 pub use self::{
     context::Context,
+    lambda::Expand,
     stack::Stack,
     writer::{
         WriteEscaped,
@@ -101,6 +102,28 @@ impl Render for bool {
         writer: &mut Writer,
     ) -> Result<(), Error> {
         context.render_to_writer(writer)
+    }
+}
+
+impl Render for str {
+    #[inline]
+    fn size_hint(&self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    fn is_truthy(&self) -> bool {
+        !self.is_empty()
+    }
+
+    #[inline]
+    fn render_escaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
+        writer.write_escaped(self)
+    }
+
+    #[inline]
+    fn render_unescaped(&self, _context: Context, writer: &mut Writer) -> Result<(), Error> {
+        writer.write_unescaped(self)
     }
 }
 

@@ -60,8 +60,6 @@ pub(crate) use balanced;
 macro_rules! recursive {
     ($partials:expr, $name:expr, $action:expr) => {
         if $partials.insert($name) {
-            println!("{:?}", &$partials);
-
             $action
         } else {
             let msg = format!("partial {} is recursive - stack: {:?}", $name, $partials);

@@ -3,12 +3,14 @@ use std::{
         HashMap,
         HashSet,
     },
+    fmt,
     fs::File,
     io,
     path::PathBuf,
 };
 
 use pistachio::{
+    Expand,
     Pistachio,
     Render,
 };
@@ -16,26 +18,22 @@ use serde::Deserialize;
 use serde_json::Value;
 use tempfile::TempDir;
 
-// #[derive(Render)]
-// struct Tmpl {
-//     foo: String,
-//     bar: i64,
-//     baz: Box<dyn Fn() -> String>,
-// }
-
 #[derive(Debug, Deserialize)]
 struct Spec {
-    tests: Vec<Test>,
+    tests: Vec<Test<Value>>,
 }
 
 impl Spec {
-    fn run(name: &str) {
+    fn parse(name: &str) -> Self {
         let path = PathBuf::from(name);
         let name = path.display();
         let file = File::open(&path).expect(&format!("error reading spec {}", name));
-        let spec: Self = serde_json::from_reader(file).expect(&format!("invalid spec in {}", name));
 
-        // XXX:
+        serde_json::from_reader(file).expect(&format!("invalid spec in {}", name))
+    }
+
+    fn run(name: &str) {
+        let spec = Self::parse(name);
         let ignored = (&["Recursion"])
             .into_iter()
             .map(|s| s.to_string())
@@ -53,17 +51,17 @@ impl Spec {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Test {
+struct Test<T> {
     name: String,
     desc: String,
-    data: Value,
+    data: T,
     template: String,
     #[serde(default)]
     partials: HashMap<PathBuf, String>,
     expected: String,
 }
 
-impl Test {
+impl<T: Render + fmt::Display> Test<T> {
     fn run(self) -> () {
         use io::Write as _;
 
@@ -108,7 +106,6 @@ impl Test {
         let actual = template.render(&self.data).map_err(|err| err.to_string());
 
         if actual.as_ref() != Ok(&expect) {
-            let data = serde_json::to_string(&self.data).expect("unable to serialize json");
             let actual = match &actual {
                 Ok(s) => s,
                 Err(e) => e,
@@ -119,7 +116,7 @@ impl Test {
             println!("        <name> {}", &self.name);
             println!(" <description> {}", self.desc);
             println!("    <template> {:?}", self.template);
-            println!("        <data> {}", data);
+            println!("        <data> {}", self.data);
             println!("    <partials> {:?}", self.partials);
             println!("    <expected> {:?}", &expect);
             println!("      <actual> {:?}", &actual);
@@ -166,7 +163,101 @@ fn test_spec_inheritance() {
     Spec::run("spec/specs/~inheritance.json")
 }
 
-// #[test]
-// fn test_spec_lamdas() {
-//     Spec::run("spec/specs/~lambdas.json")
-// }
+#[derive(Render)]
+struct Lambda<F> {
+    lambda: F,
+    #[pistachio(flatten)]
+    data: Value,
+}
+
+impl<F> fmt::Display for Lambda<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", &self.data)
+    }
+}
+
+#[test]
+fn test_spec_lambdas() {
+    for test in Spec::parse("spec/specs/~lambdas.json").tests {
+        fn variable(test: Test<Value>, lambda: Box<dyn Fn() -> Expand>) {
+            Test {
+                name: test.name,
+                desc: test.desc,
+                template: test.template,
+                partials: test.partials,
+                expected: test.expected,
+                data: Lambda {
+                    lambda,
+                    data: test.data,
+                },
+            }
+            .run()
+        }
+
+        fn section(test: Test<Value>, lambda: Box<dyn Fn(&str) -> Expand>) {
+            Test {
+                name: test.name,
+                desc: test.desc,
+                template: test.template,
+                partials: test.partials,
+                expected: test.expected,
+                data: Lambda {
+                    lambda,
+                    data: test.data,
+                },
+            }
+            .run()
+        }
+
+        match &*test.name {
+            "Interpolation" => {
+                variable(test, Box::new(|| "world".into()));
+            },
+
+            "Interpolation - Expansion" => {
+                variable(test, Box::new(|| "{{planet}}".into()));
+            },
+
+            // "Interpolation - Alternate Delimiters" => {
+            //     Box::new(|_| Expand("|planet| => {{planet}}".to_string()))
+            // },
+
+            // Requires FnMut/RefCell
+            // "Interpolation - Multiple Calls" => {
+            //     let mut calls = 0usize;
+            //     run(test, |_| {
+            //         calls += 1;
+            //         Expand(calls.to_string())
+            //     });
+            // },
+            // "Escaping" => run(test, |_| ">".into()),
+            //
+            "Section" => {
+                section(
+                    test,
+                    Box::new(|s| if s == "{{x}}" { "yes" } else { "no" }.into()),
+                );
+            },
+
+            "Section - Expansion" => {
+                section(test, Box::new(|s| (s.to_owned() + "{{planet}}" + s).into()));
+            },
+
+            // "Section - Alternate Delimiters" => {
+            //     let f = |text: String| text.clone() + "{{planet}} => |planet|" + &text;
+            //     ctx.insert("lambda".to_string(), Data::Fun(RefCell::new(Box::new(f))));
+            // },
+            //
+            // "Section - Multiple Calls" => {
+            //     let f = |text: String| "__".to_string() + &text + "__";
+            //     ctx.insert("lambda".to_string(), Data::Fun(RefCell::new(Box::new(f))));
+            // },
+            //
+            "Inverted Section" => {
+                section(test, Box::new(|_| "".into()));
+            },
+
+            name => println!("unimplemented lambda spec: {}", name),
+        }
+    }
+}

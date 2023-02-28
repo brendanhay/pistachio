@@ -21,11 +21,14 @@
 //! [mustache]: https://jgonggrijp.gitlab.io/wontache/mustache.5.html
 //! [set delimiter]: https://jgonggrijp.gitlab.io/wontache/mustache.5.html#Set-Delimiter
 
-use std::str::pattern::Pattern;
+use std::{
+    fmt,
+    str::pattern::Pattern,
+};
 
 use crate::Error;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Token<'a> {
     Eof(&'a str, Layout),    // Raw textual content leading up to EOF.
     Ident(&'a str),          // An identifier - the single component of a key, no dots!
@@ -45,8 +48,6 @@ pub enum Token<'a> {
     Period,                  // .
     Equals,                  // =
 }
-
-use std::fmt;
 
 use Token::*;
 
@@ -76,7 +77,7 @@ impl fmt::Display for Token<'_> {
 
 /// If a tag is preceeded by a newline + whitespace and a trailining newline,
 /// it is considered standalone.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Layout {
     Preserve,
     Standalone,
@@ -205,7 +206,7 @@ impl<'a> Lexer<'a> {
         }?;
 
         // Get the position before we skip trailing whitespace.
-        let end = self.position - 1;
+        let mut end = self.position - 1;
         // Avoid running multiple times when inlined into the match guard.
         let dynamic = self.lookahead("*");
         // Note if the previously parsed token was tag entry, so we can
@@ -215,6 +216,10 @@ impl<'a> Lexer<'a> {
         match token {
             // {{
             Enter(content, _delim) => {
+                // Adjust the enter position to match the content length,
+                // not the delimiter length.
+                end = start + content.len();
+
                 // XXX: it would be safe to iterate over bytes here.
                 // Was there a newline + any amount of whitspace prior to the enter tag?
                 for c in content.chars().rev() {
@@ -399,12 +404,57 @@ fn print_tokens() {
     // let source = r#""{{person.name}}" == "{{#person}}{{name}}{{/person}}""#;
     // let source = "{{#a.b.c}}Here{{/a.b.c}}";
     // let source = "#{{# boolean }}\n/\n  {{/ boolean }}";
-    let source = "{{#a}}{{b.c}}{{/a}}";
-    let source = "test {{<parent}}{{$stuff}}override1{{/stuff}}{{/parent}} {{<parent}}{{$stuff}}override2{{/stuff}}{{/parent}}\n";
+    // let source = "{{#a}}{{b.c}}{{/a}}";
+    // let source = "test {{<parent}}{{$stuff}}override1{{/stuff}}{{/parent}} {{<parent}}{{$stuff}}override2{{/stuff}}{{/parent}}\n";
     let source = "|{{$stuff}}...{{/stuff}}{{$default}} default{{/default}}|";
+    let source = "<{{#lambda}}{{x}}{{/lambda}}>";
     let lexer = Lexer::new(source);
     let tokens = lexer.collect::<Vec<_>>();
 
-    println!("{:#?}", tokens);
+    println!("{:?}", tokens);
     println!("{:?}", source);
 }
+
+// #[test]
+// fn test_chr_position() {
+//     let source = "<{{#lambda}}-{{/lambda}}>";
+//     let lexer = Lexer::new(source).into_iter().filter_map(|res| res.ok());
+//     let expect: Vec<Spanned<'_>> = vec![
+//         (0, Enter("<", "{{"), 2),
+//         (3, Hash, 3),
+//         (4, Ident("lambda"), 9),
+//         (10, Leave("}}", Layout::Preserve), 11),
+//         (12, Enter("-", "{{"), 14),
+//         (15, RSlash, 15),
+//         (16, String("lambda"), 21),
+//         (22, Leave("}}", Layout::Preserve), 23),
+//         (24, Eof(">", Layout::Preserve), 24),
+//     ];
+
+//     assert!(expect.into_iter().eq(lexer));
+// }
+
+// #[test]
+// fn test_var_position() {
+//     let source = "<{{#lambda}}{{x}}{{/lambda}}>";
+//     let actual = Lexer::new(source)
+//         .into_iter()
+//         .filter_map(|res| res.ok())
+//         .collect::<Vec<Spanned<'_>>>();
+//     let expect: Vec<Spanned<'_>> = vec![
+//         (0, Enter("<", "{{"), 2),
+//         (3, Hash, 3),
+//         (4, Ident("lambda"), 9),
+//         (10, Leave("}}", Layout::Preserve), 11),
+//         (12, Enter("", "{{"), 13),
+//         (14, Ident("x"), 14),
+//         (15, Leave("}}", Layout::Preserve), 16),
+//         (17, Enter("", "{{"), 18),
+//         (19, RSlash, 19),
+//         (20, String("lambda"), 25),
+//         (26, Leave("}}", Layout::Preserve), 27),
+//         (28, Eof(">", Layout::Preserve), 28),
+//     ];
+
+//     assert_eq!(expect, actual);
+// }
