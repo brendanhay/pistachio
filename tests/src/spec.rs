@@ -217,11 +217,11 @@ fn test_spec_lambdas() {
             "Interpolation - Expansion" => {
                 variable(test, Box::new(|| "{{planet}}".into()));
             },
-
+            //
             // "Interpolation - Alternate Delimiters" => {
             //     Box::new(|_| Expand("|planet| => {{planet}}".to_string()))
             // },
-
+            //
             // Requires FnMut/RefCell
             // "Interpolation - Multiple Calls" => {
             //     let mut calls = 0usize;
@@ -230,8 +230,9 @@ fn test_spec_lambdas() {
             //         Expand(calls.to_string())
             //     });
             // },
-            // "Escaping" => run(test, |_| ">".into()),
             //
+            "Escaping" => variable(test, Box::new(|| ">".into())),
+
             "Section" => {
                 section(
                     test,
@@ -242,7 +243,7 @@ fn test_spec_lambdas() {
             "Section - Expansion" => {
                 section(test, Box::new(|s| (s.to_owned() + "{{planet}}" + s).into()));
             },
-
+            //
             // "Section - Alternate Delimiters" => {
             //     let f = |text: String| text.clone() + "{{planet}} => |planet|" + &text;
             //     ctx.insert("lambda".to_string(), Data::Fun(RefCell::new(Box::new(f))));
