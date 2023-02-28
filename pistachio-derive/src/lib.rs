@@ -138,7 +138,7 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
                 }
             } else {
                 quote! {
-                    #key => Some(self.#field)
+                    #key => Some(&self.#field),
                 }
             }
         },
@@ -158,13 +158,14 @@ pub fn derive_render(input: TokenStream) -> TokenStream {
     let tokens = quote! {
         impl #generics ::pistachio::render::Render for #ident #generics #where_clause {
             #[inline]
-            fn size_hint(&self, template: &::pistachio::Template) -> usize {
-                template.size_hint() #( + self.#fields.size_hint(template) )*
+            fn size_hint(&self) -> usize {
+                0 #( + self.#fields.size_hint() )*
             }
 
             #[inline]
             fn render_section(
                 &self,
+                _capture: &str,
                 context: ::pistachio::render::Context,
                 writer: &mut ::pistachio::render::Writer
             ) -> std::result::Result<(), ::pistachio::Error> {

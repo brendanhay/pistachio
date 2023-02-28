@@ -205,7 +205,7 @@ impl<'a> Lexer<'a> {
         }?;
 
         // Get the position before we skip trailing whitespace.
-        let end = self.position;
+        let end = self.position - 1;
         // Avoid running multiple times when inlined into the match guard.
         let dynamic = self.lookahead("*");
         // Note if the previously parsed token was tag entry, so we can
@@ -355,7 +355,9 @@ impl<'a> Lexer<'a> {
 
         self.source = self.source.trim_start_matches(|c: char| {
             let ws = c.is_whitespace();
-            count += 1;
+            if ws {
+                count += 1;
+            }
             ws
         });
 
@@ -396,7 +398,10 @@ fn print_tokens() {
     // let source = "|\r\n{{#boolean}}\r\n{{/boolean}}\r\n|";
     // let source = r#""{{person.name}}" == "{{#person}}{{name}}{{/person}}""#;
     // let source = "{{#a.b.c}}Here{{/a.b.c}}";
-    let source = "#{{# boolean }}\n/\n  {{/ boolean }}";
+    // let source = "#{{# boolean }}\n/\n  {{/ boolean }}";
+    let source = "{{#a}}{{b.c}}{{/a}}";
+    let source = "test {{<parent}}{{$stuff}}override1{{/stuff}}{{/parent}} {{<parent}}{{$stuff}}override2{{/stuff}}{{/parent}}\n";
+    let source = "|{{$stuff}}...{{/stuff}}{{$default}} default{{/default}}|";
     let lexer = Lexer::new(source);
     let tokens = lexer.collect::<Vec<_>>();
 

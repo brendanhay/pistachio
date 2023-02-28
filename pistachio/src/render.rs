@@ -28,6 +28,7 @@ use crate::Error;
 mod json;
 
 mod context;
+mod lambda;
 mod stack;
 mod writer;
 
@@ -54,7 +55,12 @@ pub trait Render {
     }
 
     #[inline]
-    fn render_section(&self, _context: Context, _writer: &mut Writer) -> Result<(), Error> {
+    fn render_section(
+        &self,
+        _capture: &str,
+        _context: Context,
+        _writer: &mut Writer,
+    ) -> Result<(), Error> {
         Ok(())
     }
 
@@ -88,7 +94,12 @@ impl Render for bool {
     }
 
     #[inline]
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+    fn render_section(
+        &self,
+        _capture: &str,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Error> {
         context.render_to_writer(writer)
     }
 }
@@ -115,7 +126,12 @@ impl Render for String {
     }
 
     #[inline]
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+    fn render_section(
+        &self,
+        _capture: &str,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Error> {
         context.push(self).render_to_writer(writer)
     }
 }
@@ -127,7 +143,12 @@ impl<T: Render> Render for Vec<T> {
     }
 
     #[inline]
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+    fn render_section(
+        &self,
+        _capture: &str,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Error> {
         for item in self.iter() {
             context.push(item).render_to_writer(writer)?;
         }
@@ -148,7 +169,12 @@ where
     }
 
     #[inline]
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+    fn render_section(
+        &self,
+        _capture: &str,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Error> {
         context.push(self).render_to_writer(writer)
     }
 
@@ -252,10 +278,11 @@ macro_rules! impl_pointers {
                 #[inline]
                 fn render_section(
                     &self,
+                    capture: &str,
                     context: Context,
                     writer: &mut Writer,
                 ) -> Result<(), Error> {
-                    self.deref().render_section(context, writer)
+                    self.deref().render_section(capture, context, writer)
                 }
 
                 #[inline]

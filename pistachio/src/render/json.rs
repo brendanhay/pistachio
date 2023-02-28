@@ -11,7 +11,6 @@ use crate::{
         Render,
         Writer,
     },
-    Template,
 };
 
 impl Render for Value {
@@ -64,14 +63,19 @@ impl Render for Value {
     }
 
     #[inline]
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+    fn render_section(
+        &self,
+        capture: &str,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Error> {
         match self {
-            Value::Null => ().render_section(context, writer),
-            Value::Bool(b) => b.render_section(context, writer),
-            Value::Number(n) => n.render_section(context, writer),
-            Value::String(s) => s.render_section(context, writer),
-            Value::Array(v) => v.render_section(context, writer),
-            Value::Object(m) => m.render_section(context, writer),
+            Value::Null => ().render_section(capture, context, writer),
+            Value::Bool(b) => b.render_section(capture, context, writer),
+            Value::Number(n) => n.render_section(capture, context, writer),
+            Value::String(s) => s.render_section(capture, context, writer),
+            Value::Array(v) => v.render_section(capture, context, writer),
+            Value::Object(m) => m.render_section(capture, context, writer),
         }
     }
 
@@ -91,7 +95,12 @@ impl Render for Map<String, Value> {
     }
 
     #[inline]
-    fn render_section(&self, context: Context, writer: &mut Writer) -> Result<(), Error> {
+    fn render_section(
+        &self,
+        _content: &str,
+        context: Context,
+        writer: &mut Writer,
+    ) -> Result<(), Error> {
         context.push(self).render_to_writer(writer)
     }
 

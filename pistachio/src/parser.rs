@@ -14,6 +14,11 @@ pub type ParseError<T, E = Error> = lalrpop_util::ParseError<usize, T, E>;
 
 pub type Parser = grammar::parser::MustacheParser;
 
+// struct Span {
+//     start: usize,
+//     end: usize,
+// }
+
 pub trait Spanned {
     fn span(&self) -> (usize, usize);
 }
@@ -51,3 +56,21 @@ macro_rules! balanced {
 }
 
 pub(crate) use balanced;
+
+macro_rules! recursive {
+    ($partials:expr, $name:expr, $action:expr) => {
+        if $partials.insert($name) {
+            println!("{:?}", &$partials);
+
+            $action
+        } else {
+            let msg = format!("partial {} is recursive - stack: {:?}", $name, $partials);
+
+            Err(crate::parser::ParseError::User {
+                error: crate::error::Error::InvalidPartial(msg),
+            })
+        }
+    };
+}
+
+pub(crate) use recursive;

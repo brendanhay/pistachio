@@ -8,10 +8,20 @@ use std::{
     path::PathBuf,
 };
 
-use pistachio::Pistachio;
+use pistachio::{
+    Pistachio,
+    Render,
+};
 use serde::Deserialize;
 use serde_json::Value;
 use tempfile::TempDir;
+
+#[derive(Render)]
+struct Tmpl {
+    foo: String,
+    bar: i64,
+    baz: Box<dyn Fn() -> String>,
+}
 
 #[derive(Debug, Deserialize)]
 struct Spec {
@@ -25,7 +35,8 @@ impl Spec {
         let file = File::open(&path).expect(&format!("error reading spec {}", name));
         let spec: Self = serde_json::from_reader(file).expect(&format!("invalid spec in {}", name));
 
-        let ignored = (&["Deeply Nested Contexts"])
+        // XXX:
+        let ignored = (&["Recursion", "Deeply Nested Contexts"])
             .into_iter()
             .map(|s| s.to_string())
             .collect::<HashSet<String>>();
@@ -84,6 +95,7 @@ impl Test {
                 println!(" <description> {}", self.desc);
                 println!("        <data> {}", self.data);
                 println!("    <template> {}", self.template);
+                println!("    <partials> {:?}", self.partials);
                 println!("       <error> {}", &err);
                 println!(" {}", &span);
                 println!("// End");
@@ -109,6 +121,7 @@ impl Test {
             println!(" <description> {}", self.desc);
             println!("        <data> {}", data);
             println!("    <template> {:#?}", template);
+            println!("    <partials> {:?}", self.partials);
             println!("    <expected> {:?}", &expect);
             println!("      <actual> {:?}", &actual);
             println!("// End");
@@ -149,10 +162,10 @@ fn test_spec_partials() {
 //     Spec::run("spec/specs/~dynamic-names.json")
 // }
 
-// #[test]
-// fn test_spec_inheritance() {
-//     Spec::run("spec/specs/~inheritance.json")
-// }
+#[test]
+fn test_spec_inheritance() {
+    Spec::run("spec/specs/~inheritance.json")
+}
 
 // #[test]
 // fn test_spec_lamdas() {

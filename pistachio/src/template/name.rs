@@ -1,4 +1,10 @@
-use std::fmt;
+use std::{
+    fmt,
+    hash::{
+        Hash,
+        Hasher,
+    },
+};
 
 use crate::parser::Spanned;
 
@@ -15,6 +21,7 @@ impl Name<'_> {
         self.keys.len() == 1 && self.keys[0] == "."
     }
 
+    #[inline]
     pub fn path(&self) -> Option<&str> {
         self.keys.first().copied()
     }
@@ -24,9 +31,19 @@ impl Name<'_> {
 // unbalanced, which is more useful than a "failed expecting . | IDENT"
 // when parsing a closing tag style error.
 impl PartialEq<Name<'_>> for Name<'_> {
+    #[inline]
     fn eq(&self, other: &Name<'_>) -> bool {
         // Normalize
         self.keys.join(".").eq(&other.keys.join("."))
+    }
+}
+
+impl Eq for Name<'_> {}
+
+impl Hash for Name<'_> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.keys.hash(state)
     }
 }
 

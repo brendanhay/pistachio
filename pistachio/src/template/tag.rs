@@ -42,8 +42,11 @@ pub struct Tag<'a> {
     pub kind: TagKind,
     /// Dotted key identifiers, like `foo.bar.baz`.
     pub name: Name<'a>,
+    /// Since a function could be used to capture the raw source of a section,
+    /// the start and end span of the source needs to be tracked.
+    pub capture: &'a str,
     /// The number of child sub-tags below this tag.
-    children: u32,
+    pub children: u32,
 }
 
 impl<'a> Tag<'a> {
@@ -53,6 +56,7 @@ impl<'a> Tag<'a> {
             kind,
             name,
             children: children as u32,
+            capture: "",
         }
     }
 
@@ -64,6 +68,7 @@ impl<'a> Tag<'a> {
                 start: 0,
                 keys: vec![],
             },
+            capture: "",
             children: 0,
         }
     }
@@ -84,6 +89,7 @@ impl<'a> Tag<'a> {
         text: &'a str,
         name: Name<'a>,
         tags: Option<Vec<Tag<'a>>>,
+        capture: &'a str,
         close: Tag<'a>,
     ) -> Vec<Tag<'a>> {
         let children = (tags.as_deref().map(|tags| tags.len()).unwrap_or(0) + 1) as u32;
@@ -92,6 +98,7 @@ impl<'a> Tag<'a> {
             text,
             kind: TagKind::Section,
             name,
+            capture,
             children,
         })
         .chain(tags.into_iter().flatten())
@@ -111,6 +118,7 @@ impl<'a> Tag<'a> {
             text,
             kind: TagKind::Inverted,
             name,
+            capture: "",
             children,
         })
         .chain(tags.into_iter().flatten())
@@ -118,30 +126,53 @@ impl<'a> Tag<'a> {
         .collect()
     }
 
-    pub fn partial(text: &'a str, name: Name<'a>) -> Tag<'a> {
-        Self::new(text, TagKind::Partial, name, 0)
-    }
-
-    // pub(crate) fn to_partial(&self, text: &'a str) -> Vec<Node<'a>> {
-    //     let mut tags = Vec::with_capacity(self.tags.len() + 1);
-    //     tags.push(Node::content(text));
-    //     tags.extend_from_slice(&self.tags);
-    //     tags
+    // pub fn partial(text: &'a str, name: Name<'a>) -> Tag<'a> {
+    //     Self::new(text, TagKind:b:Partial, name, 0)
     // }
 
-    // pub fn block(
+    // pub fn parent(
     //     text: &'a str,
     //     name: Name<'a>,
-    //     tags: Option<Vec<Node<'a>>>,
-    //     close: Node<'a>,
-    // ) -> Vec<Node<'a>> {
-    //     let tags = tags.unwrap_or_else(|| Vec::new());
-
-    //     iter::once(Node::new(text, Tag::Block, key, tags.len() + 1))
-    //         .chain(tags)
+    //     tags: Option<Vec<Tag<'a>>>,
+    //     close: Tag<'a>,
+    // ) -> Vec<Tag<'a>> {
+    //     let children = (tags.as_deref().map(|tags| tags.len()).unwrap_or(0) + 1) as u32;
+    //     let tags = tags
+    //         .into_iter()
+    //         .flatten()
     //         .chain(iter::once(close))
-    //         .collect()
+    //         .filter_map(|mut child| match child.kind {
+    //             TagKind::Block | TagKind::Closing => {
+    //                 child.text = "";
+    //                 Some(child)
+    //             },
+    //             _ => None,
+    //         });
+
+    //     iter::once(Self {
+    //         text,
+    //         kind: TagKind::Parent,
+    //         name,
+    //         capture: "",
+    //         children,
+    //     })
+    //     .chain(tags)
+    //     .collect()
     // }
+
+    pub fn block(
+        text: &'a str,
+        name: Name<'a>,
+        tags: Option<Vec<Tag<'a>>>,
+        close: Tag<'a>,
+    ) -> Vec<Tag<'a>> {
+        let tags = tags.unwrap_or_else(|| Vec::new());
+
+        iter::once(Self::new(text, TagKind::Block, name, tags.len() + 1))
+            .chain(tags)
+            .chain(iter::once(close))
+            .collect()
+    }
 
     // pub fn dynamic_partial(text: &'a str, name: Name<'a>) -> Vec<Node<'a>> {
     //     name.explode(text, Tag::Section, Tag::Partial, None, None)

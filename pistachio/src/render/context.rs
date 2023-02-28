@@ -129,8 +129,11 @@ impl<'a> Context<'a> {
                         None => {},
                         Some(var) if !var.is_truthy() => {},
                         Some(var) => {
-                            let slice = self.slice(index..index + children);
-                            var.render_section(slice, writer)?;
+                            var.render_section(
+                                tag.capture,
+                                self.slice(index..index + children),
+                                writer,
+                            )?;
 
                             // match var {
                             //     Variable::Null => {},
@@ -171,23 +174,32 @@ impl<'a> Context<'a> {
                     index += children;
                 },
 
-                // Tag::Block => {},
+                TagKind::Block => {},
+                // Tag::Parent => match tag.name.path() {
+                //     None => unreachable!(),
+                //     Some(path) => {
+                //         // Shouldn't need to raise errors here since the Loader trait
+                //         // ensures missing partial errors were already raised.
+                //         match self.partials.get(path) {
+                //             None => {},
+                //             Some(parent) => {},
+                //         }
+                //     },
+                // },
 
-                // Tag::Parent => {},
-                TagKind::Partial => match tag.name.path() {
-                    None => unreachable!(),
-                    Some(path) => {
-                        // Shouldn't need to raise errors here since the Loader trait
-                        // ensures missing partial errors were already raised.
-                        match self.partials.get(path) {
-                            None => {},
-                            Some(template) => {
-                                self.fork(template).render_to_writer(writer)?;
-                            },
-                        }
-                    },
-                },
-
+                // TagKind::Partial => match tag.name.path() {
+                //     None => unreachable!(),
+                //     Some(path) => {
+                //         // Shouldn't need to raise errors here since the Loader trait
+                //         // ensures missing partial errors were already raised.
+                //         match self.partials.get(path) {
+                //             None => {},
+                //             Some(partial) => {
+                //                 self.fork(partial).render_to_writer(writer)?;
+                //             },
+                //         }
+                //     },
+                // },
                 TagKind::Closing => {},
 
                 TagKind::Content => {},

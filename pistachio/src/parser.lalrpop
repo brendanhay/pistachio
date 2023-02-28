@@ -8,13 +8,18 @@
 
 use crate::{
     lexer::{Token, Layout},
-    parser::{Spanned, balanced},
+    parser::{Spanned, balanced, recursive},
     template::{Name, Tag},
     map::Set,
+    Loader,
     Error,
 };
 
-grammar<'a>(size_hint: &mut usize, partials: &mut Set<&'a str>, source: &'a str);
+grammar<'a>(
+    size_hint: &mut usize,
+    loader: &mut dyn Loader<'a>,
+    source: &'a str
+);
 
 // Tokens
 
@@ -57,18 +62,20 @@ Tags: Vec<Tag<'a>> = {
 Tag: Vec<Tag<'a>> = {
     Section  => <>,
     Inverted => <>,
-    // Parent   => <>,
-    // Block    => <>,
-    Partial  => vec![<>],
+    Parent   => <>,
+    Block    => <>,
+    Partial  => <>,
     Variable => vec![<>],
     Comment  => vec![<>],
     Eof      => vec![<>],
 }
 
 Section: Vec<Tag<'a>> = {
-    <text:"{{"> "#" <name:Name> <layout:"}}"> <tags:Tags?> <close:Closing> =>? {
+    <text:"{{"> "#" <name:Name> <layout:"}}"> <start:@L> <tags:Tags?> <end:@R> <close:Closing> =>? {
+        let capture = &source[start..end + 1];
+
         balanced!("#", &name, &close.name, name.span(), {
-            Ok(Tag::section(layout.trim(text), name, tags, close))
+            Ok(Tag::section(layout.trim(text), name, tags, capture, close))
         })
     },
 }
@@ -81,46 +88,43 @@ Inverted: Vec<Tag<'a>> = {
     },
 }
 
-// Block: Vec<Tag<'a>> = {
-//     <text:"{{"> "$" <name:Key> <layout:"}}"> <tags:Tags?> <close:Closing> =>? {
-//         balanced!("$", &name, &close.key, key.span(), {
-//             Ok(Tag::block(layout.trim(text), key, tags, close))
-//         })
-//     },
-// }
+Block: Vec<Tag<'a>> = {
+    <text:"{{"> "$" <name:Key> <layout:"}}"> <tags:Tags?> <close:Closing> =>? {
+        balanced!("$", &name, &close.name, name.span(), {
+            Ok(Tag::block(layout.trim(text), name, tags, close))
+        })
+    },
+}
 
-// Parent: Vec<Tag<'a>> = {
-//     <text:"{{"> "<" "*" <name:Name> <layout:"}}"> <tags:Tags?> <close:Closing> =>? {
-//         balanced!("<", &name, &close.key, name.span(), {
-//             Ok(Tag::dynamic_parent(layout.trim(text), name, tags, close))
-//         })
-//     },
+Parent: Vec<Tag<'a>> = {
+//     // <text:"{{"> "<" "*" <name:Name> <layout:"}}"> <tags:Tags?> <close:Closing> =>? {
+//     //     balanced!("<", &name, &close.key, name.span(), {
+//     //         Ok(Tag::dynamic_parent(layout.trim(text), name, tags, close))
+//     //     })
+//     // },
 
-//     <text:"{{"> "<" <start:@L> <path:Path> <layout:"}}"> <tags:Tags?> <close:ClosePath> =>? {
-//         balanced!("<", &name, &close.key, (start, name).span(), {
-//             let template = loader.get_template(name)?;
-//             *size_hint += template.size_hint();
-//             Ok(template.inherit_parent(layout.rim(text), tags, close))
-//         })
-//     },
-// }
+    <text:"{{"> "<" <start:@L> <path:"STRING"> <layout:"}}"> <tags:Tags?> <close:Closing> =>? {
+        let name = Name { start, keys: vec![path] };
 
-Partial: Tag<'a> = {
+        balanced!("<", &name, &close.name, name.span(), {
+            let template = loader.get_partial(path.into())?;
+            *size_hint += template.size_hint();
+            Ok(template.inherit_parent(layout.trim(text), tags, close))
+        })
+    },
+}
+
+Partial: Vec<Tag<'a>> = {
     // <text:"{{"> ">" "*" <name:Name> <layout:"}}"> => {
     //     Tag::dynamic_partial(layout.trim(text), name)
     // },
 
     <text:"{{"> ">" <start:@L> <path:"STRING"> <layout:"}}"> =>? {
-        partials.insert(path);
-        Ok(Tag::partial(layout.trim(text), Name { start, keys: vec![path] }))
+        let template = loader.get_partial(path.into())?;
+        *size_hint += template.size_hint();
+        Ok(template.to_partial(layout.trim(text)))
     },
 }
-
-// Closing: Tag<'a> = {
-//     <text:"{{"> "/" <name:Name> <layout:"}}"> => {
-//         Tag::closing(layout.trim(text), name)
-//     },
-// }
 
 Closing: Tag<'a> = {
     <text:"{{"> "/" <start:@L> <path:"STRING"> <layout:"}}"> => {

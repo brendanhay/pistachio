@@ -28,6 +28,9 @@ pub enum Error {
     /// An attempt to include a partial or parent failed.
     InvalidPartial(String),
 
+    /// A recursive partial or parent was encountered.
+    RecursivePartial(String),
+
     /// An LR parser error occurred.
     ParsingFailed((usize, usize), String),
 
@@ -61,6 +64,7 @@ impl fmt::Display for Error {
             },
             Error::NotFound => f.write_str("not found"),
             Error::InvalidPartial(msg) => write!(f, "partial path {} is invalid", msg),
+            Error::RecursivePartial(msg) => write!(f, "recursive partial `{}` is unsupported", msg),
             Error::ParsingFailed(_span, msg) => f.write_str(msg),
             Error::MissingVariable(span, ident) => write!(
                 f,

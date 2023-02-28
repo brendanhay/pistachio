@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     io,
+    iter,
 };
 
 pub use self::{
@@ -12,7 +13,7 @@ pub use self::{
 };
 use crate::{
     lexer::Lexer,
-    map::Set,
+    map::Map,
     parser::Parser,
     render::{
         Context,
@@ -20,6 +21,8 @@ use crate::{
         Writer,
     },
     Error,
+    Loader,
+    NoLoading,
     Templates,
 };
 
@@ -29,9 +32,6 @@ mod tag;
 // XXX: Something to record if the template has no non-content nodes,
 // ie. it doesn't need to be rendered - we just use the source.
 
-// lambdas
-// unparsed lambdas (something like Source vs String)
-
 /// A self-contained mustache template guaranteed to not reference
 /// external parents or partials.
 #[derive(Debug, Clone)]
@@ -39,6 +39,7 @@ pub struct Template<'a> {
     size_hint: usize,
     tags: Vec<Tag<'a>>,
     source: Cow<'a, str>,
+    raise: bool,
 }
 
 impl<'a> Template<'a> {
@@ -46,12 +47,7 @@ impl<'a> Template<'a> {
     where
         S: Into<Cow<'a, str>>,
     {
-        let (template, partials) = Self::load(source.into())?;
-        if partials.is_empty() {
-            Ok(template)
-        } else {
-            Err(Error::LoadingDisabled)
-        }
+        Self::with_loader(source.into(), &mut NoLoading)
     }
 
     pub fn size_hint(&self) -> usize {
@@ -62,7 +58,7 @@ impl<'a> Template<'a> {
         &self.source
     }
 
-    pub fn render<T>(&self, raise: bool, value: T) -> Result<String, Error>
+    pub fn render<T>(&self, value: T) -> Result<String, Error>
     where
         T: Render,
     {
@@ -72,12 +68,12 @@ impl<'a> Template<'a> {
         // Add 25% for escaping and various expansions.
         capacity += capacity / 4;
 
-        Context::new(raise, &partials, &self.tags)
+        Context::new(self.raise, &partials, &self.tags)
             .push(&value)
             .render(capacity)
     }
 
-    pub fn render_to_writer<T, W>(&self, raise: bool, value: T, writer: &mut W) -> Result<(), Error>
+    pub fn render_to_writer<T, W>(&self, value: T, writer: &mut W) -> Result<(), Error>
     where
         T: Render,
         W: io::Write,
@@ -85,7 +81,7 @@ impl<'a> Template<'a> {
         let partials = Templates::default();
         let mut writer = Writer::new(writer);
 
-        Context::new(raise, &partials, &self.tags)
+        Context::new(self.raise, &partials, &self.tags)
             .push(&value)
             .render_to_writer(&mut writer)
     }
@@ -99,76 +95,92 @@ impl<'a> Template<'a> {
             size_hint: 0,
             tags: Vec::new(),
             source: "".into(),
+            raise: false,
         }
     }
 
     #[inline]
-    pub(crate) fn load(source: Cow<'a, str>) -> Result<(Template<'a>, Set<&'a str>), Error> {
-        let mut partials = Set::default();
+    pub(crate) fn with_loader(
+        source: Cow<'a, str>,
+        loader: &mut impl Loader<'a>,
+    ) -> Result<Template<'a>, Error> {
         if source.is_empty() {
-            return Ok((Self::empty(), partials));
+            return Ok(Self::empty());
         }
 
         let unsafe_source: &'a str = unsafe { &*(&*source as *const str) };
 
         let mut size_hint = 0;
         let lexer = Lexer::new(&unsafe_source);
-        let tags = Parser::new().parse(&mut size_hint, &mut partials, &unsafe_source, lexer)?;
+        let tags = Parser::new().parse(&mut size_hint, loader, &unsafe_source, lexer)?;
 
-        Ok((
-            Template {
-                size_hint,
-                tags,
-                source,
-            },
-            partials,
-        ))
+        Ok(Template {
+            size_hint,
+            tags,
+            source,
+            raise: loader.raise(),
+        })
     }
 
-    // pub(crate) fn to_partial(&self, text: &'a str) -> Vec<Node<'a>> {
-    //     let mut nodes = Vec::with_capacity(self.nodes.len() + 1);
-    //     nodes.push(Node::content(text));
-    //     nodes.extend_from_slice(&self.nodes);
-    //     nodes
-    // }
+    pub(crate) fn to_partial(&self, text: &'a str) -> Vec<Tag<'a>> {
+        let mut tags = Vec::with_capacity(self.tags.len() + 1);
+        tags.push(Tag::content(text));
+        tags.extend_from_slice(&self.tags);
+        tags
+    }
 
-    // pub(crate) fn inherit_parent(
-    //     &self,
-    //     text: &'a str,
-    //     child: Option<Vec<Node<'a>>>,
-    //     close: Node<'a>,
-    // ) -> Vec<Node<'a>> {
-    //     let child = child.unwrap_or_else(|| Vec::new());
-    //     let mut nodes = Vec::with_capacity(self.nodes.len() + 2);
-    //     let mut blocks: map::Map<_, _> = child
-    //         .iter()
-    //         .chain(iter::once(&close))
-    //         .enumerate()
-    //         .filter_map(|(i, node)| match node.tag {
-    //             Tag::Block => Some((node.key, (i, node.children()))),
-    //             _ => None,
-    //         })
-    //         .collect();
+    pub(crate) fn inherit_parent(
+        &self,
+        text: &'a str,
+        child: Option<Vec<Tag<'a>>>,
+        close: Tag<'a>,
+    ) -> Vec<Tag<'a>> {
+        let child = child.unwrap_or_else(|| Vec::new());
+        let mut buffer = Vec::with_capacity(self.tags.len() + 2);
+        let mut blocks: Map<_, _> = child
+            .iter()
+            .chain(iter::once(&close))
+            .enumerate()
+            .filter_map(|(i, tag)| match tag.kind {
+                TagKind::Block => Some((tag.name.clone(), (i, tag))),
+                _ => None,
+            })
+            .collect();
 
-    //     nodes.push(Node::content(text));
+        buffer.push(Tag::content(text));
 
-    //     for node in &self.nodes {
-    //         match node.tag {
-    //             // For each block in the parent replace with any matching block override
-    //             // found in `nodes`. Any blocks that aren't overriden are preserved.
-    //             Tag::Block => {
-    //                 if let Some((index, next)) = blocks.remove(node.key) {
-    //                     nodes.extend_from_slice(&child[index..next as usize]);
-    //                 } else {
-    //                     nodes.push(node.clone());
-    //                 }
-    //             },
+        let mut skip = 0;
 
-    //             // Any non-block tags are preserved.
-    //             _ => nodes.push(node.clone()),
-    //         }
-    //     }
+        for (index, tag) in self.tags.iter().enumerate() {
+            match tag.kind {
+                // For each block in the parent replace with any matching block override
+                // found in `tags`. Any blocks that aren't overriden are preserved.
+                TagKind::Block => {
+                    if let Some((index, block)) = blocks.remove(&tag.name) {
+                        skip = index + tag.children as usize;
 
-    //     nodes
-    // }
+                        let mut tag = tag.clone();
+                        tag.children = block.children;
+
+                        // Preserve the included parent block tag's leading text.
+                        let slice = &child[(index + 1)..(block.children as usize) + 1];
+
+                        buffer.push(tag);
+                        buffer.extend_from_slice(slice);
+                    } else {
+                        buffer.push(tag.clone());
+                    }
+                },
+
+                // Any non-block tags are preserved.
+                _ => {
+                    if index != skip {
+                        buffer.push(tag.clone());
+                    }
+                },
+            }
+        }
+
+        buffer
+    }
 }
