@@ -14,23 +14,20 @@ use crate::{
         Template,
     },
     Error,
-    Templates,
 };
 
 /// The mustache context containing the execution stack and current sub-tree of tags.
 #[derive(Clone, Copy)]
 pub struct Context<'a> {
     stack: Stack<'a>,
-    partials: &'a Templates,
     tags: &'a [Tag<'a>],
     raise: bool,
 }
 
 impl<'a> Context<'a> {
-    pub(crate) fn new(raise: bool, partials: &'a Templates, tags: &'a [Tag<'a>]) -> Self {
+    pub(crate) fn new(raise: bool, tags: &'a [Tag<'a>]) -> Self {
         Self {
             stack: Stack::new(),
-            partials,
             tags,
             raise,
         }
@@ -174,7 +171,7 @@ impl<'a> Context<'a> {
                     index += children;
                 },
 
-                TagKind::Block => {},
+                // TagKind::Block => {},
                 // Tag::Parent => match tag.name.path() {
                 //     None => unreachable!(),
                 //     Some(path) => {
@@ -186,7 +183,6 @@ impl<'a> Context<'a> {
                 //         }
                 //     },
                 // },
-
                 // TagKind::Partial => match tag.name.path() {
                 //     None => unreachable!(),
                 //     Some(path) => {
@@ -200,13 +196,9 @@ impl<'a> Context<'a> {
                 //         }
                 //     },
                 // },
-                TagKind::Closing => {},
-
-                TagKind::Content => {},
-
-                _ => {
-                    todo!()
-                },
+                // TagKind::Closing => {},
+                // TagKind::Content => {},
+                _ => {},
             }
         }
 

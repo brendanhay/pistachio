@@ -23,7 +23,6 @@ use crate::{
     Error,
     Loader,
     NoLoading,
-    Templates,
 };
 
 mod name;
@@ -62,13 +61,12 @@ impl<'a> Template<'a> {
     where
         T: Render,
     {
-        let partials = Templates::default();
         let mut capacity = self.size_hint + value.size_hint();
 
         // Add 25% for escaping and various expansions.
         capacity += capacity / 4;
 
-        Context::new(self.raise, &partials, &self.tags)
+        Context::new(self.raise, &self.tags)
             .push(&value)
             .render(capacity)
     }
@@ -78,10 +76,9 @@ impl<'a> Template<'a> {
         T: Render,
         W: io::Write,
     {
-        let partials = Templates::default();
         let mut writer = Writer::new(writer);
 
-        Context::new(self.raise, &partials, &self.tags)
+        Context::new(self.raise, &self.tags)
             .push(&value)
             .render_to_writer(&mut writer)
     }

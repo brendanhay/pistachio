@@ -41,8 +41,6 @@ mod template;
 
 pub mod render;
 
-pub(crate) type Templates = Map<Cow<'static, str>, Template<'static>>;
-
 // /// A mustache template obtained from a `Pistachio` that potentially references other templates.
 // pub struct TemplateGuard<'a> {
 //     pistachio: &'a Pistachio,
@@ -142,7 +140,7 @@ impl Builder {
 pub struct Pistachio {
     directory: PathBuf,
     extension: OsString,
-    templates: Templates,
+    templates: Map<Cow<'static, str>, Template<'static>>,
     raise: bool,
 }
 
