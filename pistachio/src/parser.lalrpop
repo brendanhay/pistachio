@@ -108,7 +108,7 @@ Parent: Vec<Tag<'a>> = {
         let name = Name { start, keys: vec![path] };
 
         balanced!("<", &name, &close.name, name.span(), {
-            let template = loader.get_partial(path.into())?;
+            let template = loader.get_template(path.into())?;
             *size_hint += template.size_hint();
             Ok(template.inherit_parent(layout.trim(text), tags, close))
         })
@@ -121,7 +121,7 @@ Partial: Vec<Tag<'a>> = {
     // },
 
     <text:"{{"> ">" <start:@L> <path:"STRING"> <layout:"}}"> =>? {
-        let template = loader.get_partial(path.into())?;
+        let template = loader.get_template(path.into())?;
         *size_hint += template.size_hint();
         Ok(template.to_partial(layout.trim(text)))
     },

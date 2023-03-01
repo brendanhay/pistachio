@@ -21,8 +21,6 @@ use crate::{
         Writer,
     },
     Error,
-    Loader,
-    NoLoading,
 };
 
 mod name;
@@ -30,6 +28,22 @@ mod tag;
 
 // XXX: Something to record if the template has no non-content nodes,
 // ie. it doesn't need to be rendered - we just use the source.
+
+pub trait Loader<'a> {
+    fn get_template(&mut self, name: Cow<'a, str>) -> Result<&Template<'a>, Error>;
+
+    fn raise(&self) -> bool {
+        false
+    }
+}
+
+struct NoLoading;
+
+impl<'a> Loader<'a> for NoLoading {
+    fn get_template(&mut self, _name: Cow<'a, str>) -> Result<&Template<'a>, Error> {
+        Err(Error::LoadingDisabled)
+    }
+}
 
 /// A self-contained mustache template guaranteed to not reference
 /// external parents or partials.

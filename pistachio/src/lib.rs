@@ -2,18 +2,12 @@
 #![warn(clippy::disallowed_types)]
 
 use std::{
-    borrow::{
-        Borrow,
-        Cow,
-    },
+    borrow::Cow,
     ffi::{
         OsStr,
         OsString,
     },
-    fmt,
     fs,
-    hash::Hash,
-    io,
     path::{
         Path,
         PathBuf,
@@ -22,6 +16,7 @@ use std::{
 
 #[cfg(feature = "derive")]
 pub use pistachio_derive::Render;
+use template::Loader;
 
 use self::map::{
     Map,
@@ -71,11 +66,6 @@ impl Builder {
         self
     }
 
-    // pub fn disable_caching(mut self) -> Self {
-    //     self.cache = false;
-    //     self
-    // }
-
     pub fn missing_is_false(mut self) -> Self {
         self.raise = false;
         self
@@ -99,8 +89,7 @@ impl Pistachio {
 
     /// Create a new `Pistachio` with a `.mustache` file extension and the specified
     /// root directory as the search mechanism for loading templates. Templates will
-    /// be parsed once and then cached in memory. If you want to reload templates
-    /// configure the caching strategy via [`Builder::reloading`].
+    /// be parsed once and then cached in memory.
     ///
     /// By default missing `{{key}}` variables will raise an error. To change this
     /// behaviour, see [`Builder::missing_is_false`].
@@ -118,7 +107,7 @@ impl Pistachio {
 
         // XXX: Don't honor self.raise when trying to load a specifically requested template.
         if !self.templates.contains_key(&name) {
-            self.loader().get_partial(name.to_owned())?;
+            self.loader().get_template(name.to_owned())?;
         }
 
         Ok(&self.templates[&name])
@@ -159,30 +148,13 @@ impl Pistachio {
     }
 }
 
-#[doc(hidden)]
-pub trait Loader<'a> {
-    fn get_partial(&mut self, name: Cow<'a, str>) -> Result<&Template<'a>, Error>;
-
-    fn raise(&self) -> bool {
-        false
-    }
-}
-
-pub(crate) struct NoLoading;
-
-impl<'a> Loader<'a> for NoLoading {
-    fn get_partial(&mut self, _name: Cow<'a, str>) -> Result<&Template<'a>, Error> {
-        Err(Error::LoadingDisabled)
-    }
-}
-
 struct NonRecursive<'a> {
     inner: &'a mut Pistachio,
     chain: Set<String>,
 }
 
 impl<'a> Loader<'static> for NonRecursive<'a> {
-    fn get_partial(&mut self, name: Cow<'static, str>) -> Result<&Template<'static>, Error> {
+    fn get_template(&mut self, name: Cow<'static, str>) -> Result<&Template<'static>, Error> {
         if !self.inner.templates.contains_key(&name) {
             if !self.chain.insert(name.to_string()) {
                 return Err(Error::RecursivePartial(name.to_string()));
