@@ -45,8 +45,6 @@ struct Pistachio {
     callback: Option<syn::Path>,
 }
 
-/// XXX: support flatten
-
 #[proc_macro_derive(Render, attributes(pistachio))]
 pub fn derive_render(input: TokenStream) -> TokenStream {
     let item = syn::parse_macro_input!(input as syn::ItemStruct);

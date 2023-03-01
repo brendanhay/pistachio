@@ -216,7 +216,7 @@ impl<'a> Lexer<'a> {
         match token {
             // {{
             Enter(content, _delim) => {
-                // Adjust the enter position to match the content length,
+                // XXX: Adjust the enter position to match the content length,
                 // not the delimiter length.
                 end = start + content.len();
 
