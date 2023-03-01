@@ -150,15 +150,14 @@ impl Error {
                 indent += 1;
             }
 
-            if position == start {
+            if position >= start {
                 break;
             }
         }
 
-        let width = (start.max(end) - start).min(1);
+        let width = (start.max(end) - start).max(1);
         let span = "^".repeat(width);
-        let mark = format!("{:indent$}{}", "", span, indent = indent);
-
+        let mark = format!("{:indent$}{}", " ", span, indent = indent);
         let mut lines = source.lines().collect::<Vec<_>>();
         lines.insert(line + 1, &mark);
 

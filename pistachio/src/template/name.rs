@@ -70,6 +70,6 @@ impl Spanned for Name<'_> {
         let dot = self.keys.len() - 1;
         let end = self.keys.iter().map(|s| s.len()).sum::<usize>() + dot;
 
-        (self.start, end)
+        (self.start, self.start + end)
     }
 }

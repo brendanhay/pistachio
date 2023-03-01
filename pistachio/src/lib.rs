@@ -66,8 +66,8 @@ impl Builder {
         self
     }
 
-    pub fn missing_is_false(mut self) -> Self {
-        self.raise = false;
+    pub fn raise(mut self) -> Self {
+        self.raise = true;
         self
     }
 }
@@ -91,13 +91,13 @@ impl Pistachio {
     /// root directory as the search mechanism for loading templates. Templates will
     /// be parsed once and then cached in memory.
     ///
-    /// By default missing `{{key}}` variables will raise an error. To change this
-    /// behaviour, see [`Builder::missing_is_false`].
+    /// By default missing `{{key}}` variables are treated as false. To change this
+    /// behaviour and raise an error, see [`Builder::raise`].
     pub fn builder() -> Builder {
         Builder {
             directory: ".".into(),
             extension: "mustache".into(),
-            raise: true,
+            raise: false,
         }
     }
 

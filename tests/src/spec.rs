@@ -77,7 +77,6 @@ impl<T: Render + fmt::Display> Test<T> {
 
         let mut pistachio = Pistachio::builder()
             .directory(&tmp_dir)
-            .missing_is_false()
             .build()
             .expect("failed to create pistachio");
         let template = self.template.clone();
@@ -96,7 +95,8 @@ impl<T: Render + fmt::Display> Test<T> {
                 println!("        <data> {}", self.data);
                 println!("    <partials> {:?}", self.partials);
                 println!("       <error> {}", &err);
-                println!(" {}", &span);
+                println!("=>");
+                println!("{}", &span);
                 println!("// End");
                 println!("");
 
@@ -105,13 +105,17 @@ impl<T: Render + fmt::Display> Test<T> {
         };
 
         let expect = self.expected;
-        let actual = template.render(&self.data).map_err(|err| err.to_string());
+        let actual = template.render(&self.data);
 
-        if actual.as_ref() != Ok(&expect) {
-            let actual = match &actual {
-                Ok(s) => s,
-                Err(e) => e,
+        if actual.as_ref().ok() != Some(&expect) {
+            let span = match &actual {
+                Ok(s) => s.to_owned(),
+                Err(err) => err
+                    .render_span(&self.template)
+                    .unwrap_or_else(|| err.to_string()),
             };
+
+            println!("{:#?}", template);
 
             println!("");
             println!("// Begin");
@@ -122,11 +126,15 @@ impl<T: Render + fmt::Display> Test<T> {
             println!("    <partials> {:?}", self.partials);
             println!("    <expected> {:?}", &expect);
             println!("      <actual> {:?}", &actual);
+            println!("=>");
+            println!("{}", &span);
             println!("// End");
             println!("");
-        }
 
-        assert_eq!(Ok(expect), actual);
+            panic!("expected != actual");
+        } else {
+            assert_eq!(Ok(expect), actual.map_err(|err| err.to_string()));
+        }
     }
 }
 
