@@ -65,6 +65,8 @@ impl<T: Render + fmt::Display> Test<T> {
     fn run(self) -> () {
         use io::Write as _;
 
+        println!("Running `{}`", &self.name);
+
         let tmp_dir = TempDir::new().expect("failed to create temporary directory");
         for (name, partial) in &self.partials {
             let path = tmp_dir.as_ref().join(name.with_extension("mustache"));
@@ -258,7 +260,7 @@ fn test_spec_lambdas() {
                 section(test, Box::new(|_| "".into()));
             },
 
-            name => println!("unimplemented lambda spec: {}", name),
+            name => println!("Unimplemented ~lambda.yml spec: {}", name),
         }
     }
 }
